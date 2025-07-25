@@ -30,7 +30,7 @@ bool SQVM::BW_OP(SQUnsignedInteger op,SQObjectPtr &trg,const SQObjectPtr &o1,con
             case BW_XOR:    res = i1 ^ i2; break;
             case BW_SHIFTL: res = i1 << i2; break;
             case BW_SHIFTR: res = i1 >> i2; break;
-            case BW_USHIFTR:res = (SQInteger)(*((SQUnsignedInteger*)&i1) >> i2); break;
+            case BW_USHIFTR:res = SQInteger(SQUnsignedInteger(i1) >> i2); break;
             default: { Raise_Error(_SC("internal vm error bitwise op failed")); return false; }
         }
     }
@@ -43,7 +43,7 @@ bool SQVM::BW_OP(SQUnsignedInteger op,SQObjectPtr &trg,const SQObjectPtr &o1,con
 { \
     SQInteger tmask = sq_type(o1)|sq_type(o2); \
     switch(tmask) { \
-        case OT_INTEGER: trg = _integer(o1) op _integer(o2);break; \
+        case OT_INTEGER: trg = SQInteger(SQUnsignedInteger(_integer(o1)) op SQUnsignedInteger(_integer(o2)));break; \
         case (OT_FLOAT|OT_INTEGER): \
         case (OT_FLOAT): trg = tofloat(o1) op tofloat(o2); break;\
         default: _GUARD(ARITH_OP((#op)[0],trg,o1,o2)); break;\
@@ -151,8 +151,7 @@ SQVM::~SQVM()
     REMOVE_FROM_CHAIN(&_ss(this)->_gc_chain,this);
 }
 
-bool SQVM::ArithMetaMethod(SQInteger op,const SQObjectPtr &o1,const SQObjectPtr &o2,SQObjectPtr &dest)
-{
+bool SQVM::ArithMetaMethod(SQInteger op,const SQObjectPtr &o1,const SQObjectPtr &o2,SQObjectPtr &dest) {
     SQMetaMethod mm;
     switch(op){
         case _SC('+'): mm=MT_ADD; break;
@@ -160,107 +159,144 @@ bool SQVM::ArithMetaMethod(SQInteger op,const SQObjectPtr &o1,const SQObjectPtr 
         case _SC('/'): mm=MT_DIV; break;
         case _SC('*'): mm=MT_MUL; break;
         case _SC('%'): mm=MT_MODULO; break;
-        default: mm = MT_ADD; assert(0); break; //shutup compiler
+        default:
+            mm = MT_ADD;
+            assert(0);
+            break; //shutup compiler
     }
-    if(is_delegable(o1) && _delegable(o1)->_delegate) {
 
-        SQObjectPtr closure;
-        if(_delegable(o1)->GetMetaMethod(this, mm, closure)) {
-            Push(o1);Push(o2);
-            return CallMetaMethod(closure,mm,2,dest);
-        }
+    SQDelegable * delegable = nullptr;
+    switch (sq_type(o1)) {
+    case OT_TABLE:
+        delegable = _table(o1);
+        break;
+    case OT_USERDATA:
+        delegable = _userdata(o1);
+        break;
+    case OT_INSTANCE:
+        delegable = _instance(o1);
+        break;
+    default:
+        break;
     }
-    Raise_Error(_SC("arith op %c on between '%s' and '%s'"),op,GetTypeName(o1),GetTypeName(o2));
+
+    SQObjectPtr closure;
+    if (delegable && delegable->_delegate && delegable->GetMetaMethod(this, mm, closure)) {
+        Push(o1);
+        Push(o2);
+        return CallMetaMethod(closure, 2, dest);
+    }
+
+    Raise_Error(_SC("arith op %c on between '%s' and '%s'"), op, GetTypeName(o1), GetTypeName(o2));
+
     return false;
 }
 
-bool SQVM::NEG_OP(SQObjectPtr &trg,const SQObjectPtr &o)
-{
-
+bool SQVM::NEG_OP(SQObjectPtr & trg, SQObjectPtr const & o) {
+    SQDelegable * delegable = nullptr;
     switch(sq_type(o)) {
     case OT_INTEGER:
-        trg = -_integer(o);
+        // Prevent undefined behaviour when o == INT_MIN
+        trg = SQInteger(-SQUnsignedInteger(_integer(o)));
         return true;
     case OT_FLOAT:
         trg = -_float(o);
         return true;
     case OT_TABLE:
+        delegable = _table(o);
+        break;
     case OT_USERDATA:
+        delegable = _userdata(o);
+        break;
     case OT_INSTANCE:
-        if(_delegable(o)->_delegate) {
-            SQObjectPtr closure;
-            if(_delegable(o)->GetMetaMethod(this, MT_UNM, closure)) {
-                Push(o);
-                if(!CallMetaMethod(closure, MT_UNM, 1, temp_reg)) return false;
-                _Swap(trg,temp_reg);
-                return true;
-
-            }
-        }
-    default:break; //shutup compiler
+        delegable = _instance(o);
+        break;
+    default:
+        break; //shutup compiler
     }
+
+    SQObjectPtr closure;
+    if (delegable && delegable->_delegate && delegable->GetMetaMethod(this, MT_UNM, closure)) {
+        Push(o);
+        if(!CallMetaMethod(closure, 1, temp_reg)) return false;
+        _Swap(trg,temp_reg);
+        return true;
+    }
+
     Raise_Error(_SC("attempt to negate a %s"), GetTypeName(o));
+
     return false;
 }
 
 #define _RET_SUCCEED(exp) { result = (exp); return true; }
-bool SQVM::ObjCmp(const SQObjectPtr &o1,const SQObjectPtr &o2,SQInteger &result)
-{
+bool SQVM::ObjCmp(const SQObjectPtr &o1, const SQObjectPtr &o2, SQInteger &result) {
     SQObjectType t1 = sq_type(o1), t2 = sq_type(o2);
     if(t1 == t2) {
-        if(_rawval(o1) == _rawval(o2))_RET_SUCCEED(0);
-        SQObjectPtr res;
+        if(_rawval(o1) == _rawval(o2)) {
+            result = 0;
+            return true;
+        }
+
+        SQDelegable * delegable = nullptr;
         switch(t1){
         case OT_STRING:
-            _RET_SUCCEED(scstrcmp(_stringval(o1),_stringval(o2)));
+            result = scstrcmp(_stringval(o1), _stringval(o2));
+            return true;
         case OT_INTEGER:
-            _RET_SUCCEED((_integer(o1)<_integer(o2))?-1:1);
+            result = (_integer(o1)<_integer(o2)) ? -1 : 1;
+            return true;
         case OT_FLOAT:
-            _RET_SUCCEED((_float(o1)<_float(o2))?-1:1);
+            result = (_float(o1)<_float(o2)) ? -1 : 1;
+            return true;
         case OT_TABLE:
+            delegable = _table(o1);
+            break;
         case OT_USERDATA:
+            delegable = _userdata(o1);
+            break;
         case OT_INSTANCE:
-            if(_delegable(o1)->_delegate) {
-                SQObjectPtr closure;
-                if(_delegable(o1)->GetMetaMethod(this, MT_CMP, closure)) {
-                    Push(o1);Push(o2);
-                    if(CallMetaMethod(closure,MT_CMP,2,res)) {
-                        if(sq_type(res) != OT_INTEGER) {
-                            Raise_Error(_SC("_cmp must return an integer"));
-                            return false;
-                        }
-                        _RET_SUCCEED(_integer(res))
-                    }
-                    return false;
-                }
-            }
-            //continues through (no break needed)
+            delegable = _instance(o1);
+            break;
         default:
-            _RET_SUCCEED( _userpointer(o1) < _userpointer(o2)?-1:1 );
+            break;
         }
-        assert(0);
-        //if(type(res)!=OT_INTEGER) { Raise_CompareError(o1,o2); return false; }
-        //  _RET_SUCCEED(_integer(res));
 
-    }
-    else{
-        if(sq_isnumeric(o1) && sq_isnumeric(o2)){
-            if((t1==OT_INTEGER) && (t2==OT_FLOAT)) {
-                if( _integer(o1)==_float(o2) ) { _RET_SUCCEED(0); }
-                else if( _integer(o1)<_float(o2) ) { _RET_SUCCEED(-1); }
-                _RET_SUCCEED(1);
+        SQObjectPtr closure;
+        if (delegable && delegable->_delegate && delegable->GetMetaMethod(this, MT_CMP, closure)) {
+            Push(o1);
+            Push(o2);
+
+            SQObjectPtr res;
+            if (!CallMetaMethod(closure, 2, res)) {
+                return false;
+            } else if (sq_type(res) != OT_INTEGER) {
+                Raise_Error(_SC("_cmp must return an integer"));
+                return false;
             }
-            else{
-                if( _float(o1)==_integer(o2) ) { _RET_SUCCEED(0); }
-                else if( _float(o1)<_integer(o2) ) { _RET_SUCCEED(-1); }
-                _RET_SUCCEED(1);
-            }
+
+            result = _integer(res);
+            return true;
         }
-        else if(t1==OT_NULL) {_RET_SUCCEED(-1);}
-        else if(t2==OT_NULL) {_RET_SUCCEED(1);}
-        else { Raise_CompareError(o1,o2); return false; }
-
+        
+        result = _userpointer(o1) < _userpointer(o2) ? -1 : 1;
+        return true;
     }
+
+    if(sq_isnumeric(o1) && sq_isnumeric(o2)){
+        if((t1==OT_INTEGER) && (t2==OT_FLOAT)) {
+            if( _integer(o1)==_float(o2) ) { _RET_SUCCEED(0); }
+            else if( _integer(o1)<_float(o2) ) { _RET_SUCCEED(-1); }
+            _RET_SUCCEED(1);
+        }
+        else{
+            if( _float(o1)==_integer(o2) ) { _RET_SUCCEED(0); }
+            else if( _float(o1)<_integer(o2) ) { _RET_SUCCEED(-1); }
+            _RET_SUCCEED(1);
+        }
+    }
+    else if(t1==OT_NULL) {_RET_SUCCEED(-1);}
+    else if(t2==OT_NULL) {_RET_SUCCEED(1);}
+    else { Raise_CompareError(o1,o2); return false; }
     assert(0);
     _RET_SUCCEED(0); //cannot happen
 }
@@ -306,7 +342,7 @@ bool SQVM::ToString(const SQObjectPtr &o,SQObjectPtr &res)
             SQObjectPtr closure;
             if(_delegable(o)->GetMetaMethod(this, MT_TOSTRING, closure)) {
                 Push(o);
-                if(CallMetaMethod(closure,MT_TOSTRING,1,res)) {
+                if(CallMetaMethod(closure,1,res)) {
                     if(sq_type(res) == OT_STRING)
                         return true;
                 }
@@ -345,7 +381,7 @@ bool SQVM::TypeOf(const SQObjectPtr &obj1,SQObjectPtr &dest)
         SQObjectPtr closure;
         if(_delegable(obj1)->GetMetaMethod(this, MT_TYPEOF, closure)) {
             Push(obj1);
-            return CallMetaMethod(closure,MT_TYPEOF,1,dest);
+            return CallMetaMethod(closure,1,dest);
         }
     }
     dest = SQString::Create(_ss(this),GetTypeName(obj1));
@@ -548,7 +584,7 @@ bool SQVM::FOREACH_OP(SQObjectPtr &o1,SQObjectPtr &o2,SQObjectPtr
             if(_delegable(o1)->GetMetaMethod(this, MT_NEXTI, closure)) {
                 Push(o1);
                 Push(o4);
-                if(CallMetaMethod(closure, MT_NEXTI, 2, itr)) {
+                if(CallMetaMethod(closure, 2, itr)) {
                     o4 = o2 = itr;
                     if(sq_type(itr) == OT_NULL) _FINISH(exitpos);
                     if(!Get(o1, itr, o3, 0, DONT_FALL_BACK)) {
@@ -822,7 +858,7 @@ exception_restore:
                         if(_delegable(clo)->_delegate && _delegable(clo)->GetMetaMethod(this,MT_CALL,closure)) {
                             Push(clo);
                             for (SQInteger i = 0; i < arg3; i++) Push(STK(arg2 + i));
-                            if(!CallMetaMethod(closure, MT_CALL, arg3+1, clo)) SQ_THROW();
+                            if(!CallMetaMethod(closure, arg3+1, clo)) SQ_THROW();
                             if(sarg0 != -1) {
                                 STK(arg0) = clo;
                             }
@@ -1462,7 +1498,7 @@ cloned_mt:
         if(_delegable(newobj)->_delegate && _delegable(newobj)->GetMetaMethod(this,MT_CLONED,closure)) {
             Push(newobj);
             Push(self);
-            if(!CallMetaMethod(closure,MT_CLONED,2,temp_reg))
+            if(!CallMetaMethod(closure,2,temp_reg))
                 return false;
         }
         }
@@ -1490,7 +1526,7 @@ bool SQVM::NewSlotA(const SQObjectPtr &self,const SQObjectPtr &key,const SQObjec
             Push(self); Push(key); Push(val);
             Push(attrs);
             Push(bstatic);
-            return CallMetaMethod(mm,MT_NEWMEMBER,5,temp_reg);
+            return CallMetaMethod(mm,5,temp_reg);
         }
     }
     if(!NewSlot(self, key, val,bstatic))
@@ -1513,7 +1549,7 @@ bool SQVM::NewSlot(const SQObjectPtr &self,const SQObjectPtr &key,const SQObject
                 SQObjectPtr closure;
                 if(_delegable(self)->_delegate && _delegable(self)->GetMetaMethod(this,MT_NEWSLOT,closure)) {
                     Push(self);Push(key);Push(val);
-                    if(!CallMetaMethod(closure,MT_NEWSLOT,3,res)) {
+                    if(!CallMetaMethod(closure,3,res)) {
                         return false;
                     }
                     rawcall = false;
@@ -1531,7 +1567,7 @@ bool SQVM::NewSlot(const SQObjectPtr &self,const SQObjectPtr &key,const SQObject
         SQObjectPtr closure;
         if(_delegable(self)->_delegate && _delegable(self)->GetMetaMethod(this,MT_NEWSLOT,closure)) {
             Push(self);Push(key);Push(val);
-            if(!CallMetaMethod(closure,MT_NEWSLOT,3,res)) {
+            if(!CallMetaMethod(closure,3,res)) {
                 return false;
             }
             break;
@@ -1573,7 +1609,7 @@ bool SQVM::DeleteSlot(const SQObjectPtr &self,const SQObjectPtr &key,SQObjectPtr
         SQObjectPtr closure;
         if(_delegable(self)->_delegate && _delegable(self)->GetMetaMethod(this,MT_DELSLOT,closure)) {
             Push(self);Push(key);
-            return CallMetaMethod(closure,MT_DELSLOT,2,res);
+            return CallMetaMethod(closure,2,res);
         }
         else {
             if(sq_type(self) == OT_TABLE) {
@@ -1600,21 +1636,14 @@ bool SQVM::DeleteSlot(const SQObjectPtr &self,const SQObjectPtr &key,SQObjectPtr
     return true;
 }
 
-bool SQVM::Call(SQObjectPtr &closure,SQInteger nparams,SQInteger stackbase,SQObjectPtr &outres,SQBool raiseerror)
-{
-#ifdef _DEBUG
-SQInteger prevstackbase = _stackbase;
-#endif
+bool SQVM::Call(SQObjectPtr &closure, SQInteger nparams, SQInteger stackbase, SQObjectPtr &outres, SQBool raiseerror) {
     switch(sq_type(closure)) {
     case OT_CLOSURE:
         return Execute(closure, nparams, stackbase, outres, raiseerror);
-        break;
     case OT_NATIVECLOSURE:{
         bool dummy;
         return CallNative(_nativeclosure(closure), nparams, stackbase, outres, -1, dummy, dummy);
-
-                          }
-        break;
+    }
     case OT_CLASS: {
         SQObjectPtr constr;
         SQObjectPtr temp;
@@ -1625,34 +1654,24 @@ SQInteger prevstackbase = _stackbase;
             return Call(constr,nparams,stackbase,temp,raiseerror);
         }
         return true;
-                   }
-        break;
+    }
     default:
-        Raise_Error(_SC("attempt to call '%s'"), GetTypeName(closure));
-        return false;
+        break;
     }
-#ifdef _DEBUG
-    if(!_suspended) {
-        assert(_stackbase == prevstackbase);
-    }
-#endif
-    return true;
+
+    Raise_Error(_SC("attempt to call '%s'"), GetTypeName(closure));
+    return false;
 }
 
-bool SQVM::CallMetaMethod(SQObjectPtr &closure,SQMetaMethod SQ_UNUSED_ARG(mm),SQInteger nparams,SQObjectPtr &outres)
-{
-    //SQObjectPtr closure;
-
+bool SQVM::CallMetaMethod(SQObjectPtr &closure, SQInteger nparams, SQObjectPtr &outres) {
     _nmetamethodscall++;
-    if(Call(closure, nparams, _top - nparams, outres, SQFalse)) {
-        _nmetamethodscall--;
-        Pop(nparams);
-        return true;
-    }
+
+    bool const status = Call(closure, nparams, _top - nparams, outres, SQFalse);
+
     _nmetamethodscall--;
-    //}
     Pop(nparams);
-    return false;
+
+    return status;
 }
 
 void SQVM::FindOuter(SQObjectPtr &target, SQObjectPtr *stackindex)
@@ -1698,6 +1717,7 @@ bool SQVM::EnterFrame(SQInteger newbase, SQInteger newtop, bool tailcall)
     _top = newtop;
     if(newtop + MIN_STACK_OVERHEAD > (SQInteger)_stack.size()) {
         if(_nmetamethodscall) {
+            // why?
             Raise_Error(_SC("stack overflow, cannot resize stack while in a metamethod"));
             return false;
         }

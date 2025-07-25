@@ -572,9 +572,9 @@ SQRex *sqstd_rex_compile(const SQChar *pattern,const SQChar **error)
 #ifdef _DEBUG
         {
             SQInteger nsize,i;
-            SQRexNode *t;
+            // SQRexNode *t;
             nsize = exp->_nsize;
-            t = &exp->_nodes[0];
+            // t = &exp->_nodes[0];
             scprintf(_SC("\n"));
             for(i = 0;i < nsize; i++) {
                 if(exp->_nodes[i].type>MAX_CHAR)

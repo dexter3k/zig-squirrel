@@ -94,10 +94,12 @@ public:
         va_end(vl);
         longjmp(_errorjmp,1);
     }
-    void Lex(){ _token = _lex.Lex();}
-    SQObject Expect(SQInteger tok)
-    {
 
+    void Lex(){
+        _token = _lex.Lex();
+    }
+
+    SQObject Expect(SQInteger tok) {
         if(_token != tok) {
             if(_token == TK_CONSTRUCTOR && tok == TK_IDENTIFIER) {
                 //do nothing
@@ -127,6 +129,7 @@ public:
                 Error(_SC("expected '%c'"), tok);
             }
         }
+
         SQObjectPtr ret;
         switch(tok)
         {
@@ -137,7 +140,7 @@ public:
             ret = _fs->CreateString(_lex._svalue,_lex._longstr.size()-1);
             break;
         case TK_INTEGER:
-            ret = SQObjectPtr(_lex._nvalue);
+            ret = SQObjectPtr(SQInteger(_lex._nvalue));
             break;
         case TK_FLOAT:
             ret = SQObjectPtr(_lex._fvalue);
@@ -161,8 +164,7 @@ public:
             _fs->AddInstruction(_OP_MOVE, _fs->PushTarget(), trg);
         }
     }
-    bool Compile(SQObjectPtr &o)
-    {
+    bool Compile(SQObjectPtr &o) {
         _debugline = 1;
         _debugop = 0;
 
@@ -948,7 +950,7 @@ public:
 		 if (_token == '{')
 		 {
 			 SQInteger retval = _fs->TopTarget();
-			 SQInteger nkeys = 0;
+			 // SQInteger nkeys = 0; // set but not used?
 			 Lex();
 			 while (_token != '}') {
 				 switch (_token) {
@@ -962,7 +964,7 @@ public:
 					 break;
 				 }
 				 if (_token == ',') Lex();
-				 nkeys++;
+				 // nkeys++;
 				 SQInteger val = _fs->PopTarget();
 				 SQInteger key = _fs->PopTarget();
 				 _fs->AddInstruction(_OP_SET, 0xFF, retval, key, val);

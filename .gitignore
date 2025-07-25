@@ -2,5 +2,8 @@
 bin/
 lib/
 
+# Zig cache
+.zig-cache/
+
 # Folders created at documentation generation
 doc/build/

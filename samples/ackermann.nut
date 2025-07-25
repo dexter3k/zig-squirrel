@@ -19,5 +19,5 @@ if(vargv.len()!=0) {
   n = 1;
 }
 print("n="+n+"\n");
-print("Ack(3,"+ n+ "):"+ Ack(3, n));
+print("Ack(3,"+ n+ "):"+ Ack(3, n)+"\n");
 

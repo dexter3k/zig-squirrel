@@ -434,7 +434,7 @@ SQInteger SQLexer::ReadString(SQInteger ndelim,bool verbatim)
     if(ndelim == _SC('\'')) {
         if(len == 0) Error(_SC("empty constant"));
         if(len > 1) Error(_SC("constant too long"));
-        _nvalue = _longstr[0];
+        _nvalue = SQUnsignedInteger(SQInteger(_longstr[0])); // sign-extend the value!
         return TK_INTEGER;
     }
     _svalue = &_longstr[0];
@@ -452,11 +452,10 @@ void LexHexadecimal(const SQChar *s,SQUnsignedInteger *res)
     }
 }
 
-void LexInteger(const SQChar *s,SQUnsignedInteger *res)
-{
+void LexInteger(SQChar const * s, SQUnsignedInteger * res) {
     *res = 0;
-    while(*s != 0)
-    {
+
+    while(*s != 0) {
         *res = (*res)*10+((*s++)-'0');
     }
 }
@@ -534,13 +533,13 @@ SQInteger SQLexer::ReadNumber()
         _fvalue = (SQFloat)scstrtod(&_longstr[0],&sTemp);
         return TK_FLOAT;
     case TINT:
-        LexInteger(&_longstr[0],(SQUnsignedInteger *)&_nvalue);
+        LexInteger(&_longstr[0], &_nvalue);
         return TK_INTEGER;
     case THEX:
-        LexHexadecimal(&_longstr[0],(SQUnsignedInteger *)&_nvalue);
+        LexHexadecimal(&_longstr[0], &_nvalue);
         return TK_INTEGER;
     case TOCTAL:
-        LexOctal(&_longstr[0],(SQUnsignedInteger *)&_nvalue);
+        LexOctal(&_longstr[0], &_nvalue);
         return TK_INTEGER;
     }
     return 0;

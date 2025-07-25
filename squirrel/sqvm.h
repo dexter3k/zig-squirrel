@@ -19,8 +19,14 @@ void sq_base_register(HSQUIRRELVM v);
 
 struct SQExceptionTrap{
     SQExceptionTrap() {}
-    SQExceptionTrap(SQInteger ss, SQInteger stackbase,SQInstruction *ip, SQInteger ex_target){ _stacksize = ss; _stackbase = stackbase; _ip = ip; _extarget = ex_target;}
-    SQExceptionTrap(const SQExceptionTrap &et) { (*this) = et;  }
+
+    SQExceptionTrap(SQInteger ss, SQInteger stackbase, SQInstruction *ip, SQInteger ex_target) {
+        _stacksize = ss;
+        _stackbase = stackbase;
+        _ip = ip;
+        _extarget = ex_target;
+    }
+
     SQInteger _stackbase;
     SQInteger _stacksize;
     SQInstruction *_ip;
@@ -31,10 +37,8 @@ struct SQExceptionTrap{
 
 typedef sqvector<SQExceptionTrap> ExceptionsTraps;
 
-struct SQVM : public CHAINABLE_OBJ
-{
+struct SQVM : public CHAINABLE_OBJ {
     struct CallInfo{
-        //CallInfo() { _generator = NULL;}
         SQInstruction *_ip;
         SQObjectPtr *_literals;
         SQObjectPtr _closure;
@@ -47,7 +51,7 @@ struct SQVM : public CHAINABLE_OBJ
         SQBool _root;
     };
 
-typedef sqvector<CallInfo> CallInfoVec;
+    typedef sqvector<CallInfo> CallInfoVec;
 public:
     void DebugHookProxy(SQInteger type, const SQChar * sourcename, SQInteger line, const SQChar * funcname);
     static void _DebugHookProxy(HSQUIRRELVM v, SQInteger type, const SQChar * sourcename, SQInteger line, const SQChar * funcname);
@@ -95,7 +99,7 @@ public:
     void CloseOuters(SQObjectPtr *stackindex);
 
     bool TypeOf(const SQObjectPtr &obj1, SQObjectPtr &dest);
-    bool CallMetaMethod(SQObjectPtr &closure, SQMetaMethod mm, SQInteger nparams, SQObjectPtr &outres);
+    bool CallMetaMethod(SQObjectPtr &closure, SQInteger nparams, SQObjectPtr &outres);
     bool ArithMetaMethod(SQInteger op, const SQObjectPtr &o1, const SQObjectPtr &o2, SQObjectPtr &dest);
     bool Return(SQInteger _arg0, SQInteger _arg1, SQObjectPtr &retval);
     //new stuff

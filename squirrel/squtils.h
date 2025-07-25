@@ -16,7 +16,8 @@ void sq_vm_free(void *p,SQUnsignedInteger size);
 #define sq_max(a, b) ((a) > (b) ? (a) : (b))
 
 //sqvector mini vector class, supports objects by value
-template<typename T> class sqvector
+template<typename T>
+class sqvector
 {
 public:
     sqvector()

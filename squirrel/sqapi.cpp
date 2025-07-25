@@ -1017,20 +1017,27 @@ SQRESULT sq_rawdeleteslot(HSQUIRRELVM v,SQInteger idx,SQBool pushval)
     return SQ_OK;
 }
 
-SQRESULT sq_getdelegate(HSQUIRRELVM v,SQInteger idx)
-{
-    SQObjectPtr &self=stack_get(v,idx);
-    switch(sq_type(self)){
+SQRESULT sq_getdelegate(HSQUIRRELVM v, SQInteger idx) {
+    SQObjectPtr & self = stack_get(v, idx);
+    switch (sq_type(self)) {
     case OT_TABLE:
-    case OT_USERDATA:
-        if(!_delegable(self)->_delegate){
+        if(!self._unVal.pTable->_delegate){
             v->PushNull();
             break;
         }
-        v->Push(SQObjectPtr(_delegable(self)->_delegate));
+        v->Push(SQObjectPtr(self._unVal.pTable->_delegate));
         break;
-    default: return sq_throwerror(v,_SC("wrong type")); break;
+    case OT_USERDATA:
+        if(!self._unVal.pUserData->_delegate){
+            v->PushNull();
+            break;
+        }
+        v->Push(SQObjectPtr(self._unVal.pUserData->_delegate));
+        break;
+    default:
+        return sq_throwerror(v,_SC("wrong type"));
     }
+
     return SQ_OK;
 
 }

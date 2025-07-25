@@ -264,9 +264,7 @@ void SQSharedState::RunMark(SQVM* SQ_UNUSED_ARG(vm),SQCollectable **tchain)
 
 }
 
-SQInteger SQSharedState::ResurrectUnreachable(SQVM *vm)
-{
-    SQInteger n=0;
+void SQSharedState::ResurrectUnreachable(SQVM * vm) {
     SQCollectable *tchain=NULL;
 
     RunMark(vm,&tchain);
@@ -290,7 +288,6 @@ SQInteger SQSharedState::ResurrectUnreachable(SQVM *vm)
                 ret->Append(sqo);
             }
             t = t->_next;
-            n++;
         }
 
         assert(rlast->_next == NULL);
@@ -315,7 +312,6 @@ SQInteger SQSharedState::ResurrectUnreachable(SQVM *vm)
     else {
         vm->PushNull();
     }
-    return n;
 }
 
 SQInteger SQSharedState::CollectGarbage(SQVM *vm)
@@ -488,6 +484,7 @@ void RefTable::Resize(SQUnsignedInteger size)
         }
         t++;
     }
+    (void)nfound;
     assert(nfound == oldnumofslots);
     SQ_FREE(oldbucks,(oldnumofslots * sizeof(RefNode *)) + (oldnumofslots * sizeof(RefNode)));
 }

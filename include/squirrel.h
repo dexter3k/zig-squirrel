@@ -130,28 +130,31 @@ typedef enum tagSQObjectType{
 #define ISREFCOUNTED(t) (t&SQOBJECT_REF_COUNTED)
 
 
-typedef union tagSQObjectValue
-{
-    struct SQTable *pTable;
-    struct SQArray *pArray;
-    struct SQClosure *pClosure;
-    struct SQOuter *pOuter;
-    struct SQGenerator *pGenerator;
-    struct SQNativeClosure *pNativeClosure;
-    struct SQString *pString;
-    struct SQUserData *pUserData;
+typedef union tagSQObjectValue {
+    SQRawObjectVal raw;
     SQInteger nInteger;
     SQFloat fFloat;
+
+    struct SQString *pString;
+    struct SQTable *pTable;
+    struct SQArray *pArray;
+    struct SQUserData *pUserData;
+    struct SQClosure *pClosure;
+    struct SQNativeClosure *pNativeClosure;
+    struct SQGenerator *pGenerator;
     SQUserPointer pUserPointer;
-    struct SQFunctionProto *pFunctionProto;
-    struct SQRefCounted *pRefCounted;
-    struct SQDelegable *pDelegable;
     struct SQVM *pThread;
+    struct SQFunctionProto *pFunctionProto;
     struct SQClass *pClass;
     struct SQInstance *pInstance;
     struct SQWeakRef *pWeakRef;
-    SQRawObjectVal raw;
-}SQObjectValue;
+    struct SQOuter *pOuter;
+
+    // Assumes ref counted and delegable and subtype share same pointer?
+    // TODO: Fix code to use these through the subtype?
+    struct SQRefCounted *pRefCounted;
+    struct SQDelegable *pDelegable;
+} SQObjectValue;
 
 
 typedef struct tagSQObject

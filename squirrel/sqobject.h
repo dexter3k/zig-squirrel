@@ -84,15 +84,14 @@ enum SQMetaMethod{
 
 #define MINPOWER2 4
 
-struct SQRefCounted
-{
+struct SQRefCounted {
     SQUnsignedInteger _uiRef;
     struct SQWeakRef *_weakref;
+
     SQRefCounted() { _uiRef = 0; _weakref = NULL; }
     virtual ~SQRefCounted();
     SQWeakRef *GetWeakRef(SQObjectType type);
-    virtual void Release()=0;
-
+    virtual void Release() = 0;
 };
 
 struct SQWeakRef : SQRefCounted
@@ -145,7 +144,7 @@ struct SQObjectPtr;
 #define _funcproto(obj) ((obj)._unVal.pFunctionProto)
 #define _class(obj) ((obj)._unVal.pClass)
 #define _instance(obj) ((obj)._unVal.pInstance)
-#define _delegable(obj) ((SQDelegable *)(obj)._unVal.pDelegable)
+#define _delegable(obj) ((obj)._unVal.pDelegable)
 #define _weakref(obj) ((obj)._unVal.pWeakRef)
 #define _outer(obj) ((obj)._unVal.pOuter)
 #define _refcounted(obj) ((obj)._unVal.pRefCounted)

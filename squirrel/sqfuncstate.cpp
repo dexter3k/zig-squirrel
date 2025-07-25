@@ -589,12 +589,17 @@ SQObject SQFuncState::CreateTable()
     return nt;
 }
 
-SQFunctionProto *SQFuncState::BuildProto()
-{
-
-    SQFunctionProto *f=SQFunctionProto::Create(_ss,_instructions.size(),
-        _nliterals,_parameters.size(),_functions.size(),_outervalues.size(),
-        _lineinfos.size(),_localvarinfos.size(),_defaultparams.size());
+SQFunctionProto *SQFuncState::BuildProto() {
+    SQFunctionProto * f = SQFunctionProto::Create(
+        _ss,
+        _instructions.size(),
+        _nliterals,
+        _parameters.size(),
+        _functions.size(),
+        _outervalues.size(),
+        _lineinfos.size(),
+        _localvarinfos.size(),
+        _defaultparams.size());
 
     SQObjectPtr refidx,key,val;
     SQInteger idx;

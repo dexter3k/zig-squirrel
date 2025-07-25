@@ -68,7 +68,7 @@ public:
 #ifndef NO_GARBAGE_COLLECTOR
     SQInteger CollectGarbage(SQVM *vm);
     void RunMark(SQVM *vm,SQCollectable **tchain);
-    SQInteger ResurrectUnreachable(SQVM *vm);
+    void ResurrectUnreachable(SQVM * vm);
     static void MarkObject(SQObjectPtr &o,SQCollectable **chain);
 #endif
     SQObjectPtrVec *_metamethods;
