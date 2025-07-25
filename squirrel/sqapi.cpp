@@ -45,7 +45,7 @@ HSQUIRRELVM sq_open(SQInteger initialstacksize)
     SQVM *v;
     sq_new(ss, SQSharedState);
     ss->Init();
-    v = (SQVM *)SQ_MALLOC(sizeof(SQVM));
+    v = (SQVM *)sq_vm_malloc(sizeof(SQVM));
     new (v) SQVM(ss);
     ss->_root_vm = v;
     if(v->Init(NULL, initialstacksize)) {
@@ -63,7 +63,7 @@ HSQUIRRELVM sq_newthread(HSQUIRRELVM friendvm, SQInteger initialstacksize)
     SQVM *v;
     ss=_ss(friendvm);
 
-    v= (SQVM *)SQ_MALLOC(sizeof(SQVM));
+    v= (SQVM *)sq_vm_malloc(sizeof(SQVM));
     new (v) SQVM(ss);
 
     if(v->Init(friendvm, initialstacksize)) {
@@ -148,11 +148,11 @@ void sq_notifyallexceptions(HSQUIRRELVM v, SQBool enable)
     _ss(v)->_notifyallexceptions = enable?true:false;
 }
 
-void sq_addref(HSQUIRRELVM v,HSQOBJECT *po)
-{
+void sq_addref(HSQUIRRELVM v, HSQOBJECT * po) {
     if(!ISREFCOUNTED(sq_type(*po))) return;
+
 #ifdef NO_GARBAGE_COLLECTOR
-    __AddRef(po->_type,po->_unVal);
+    if (ISREFCOUNTED(po->_type)) po->_unVal.pRefCounted->_uiRef++;
 #else
     _ss(v)->_refs_table.AddRef(*po);
 #endif
@@ -265,6 +265,7 @@ void sq_pushthread(HSQUIRRELVM v, HSQUIRRELVM thread)
 
 SQUserPointer sq_newuserdata(HSQUIRRELVM v,SQUnsignedInteger size)
 {
+    // the + SQ_ALIGNMENT is unnecessary here?
     SQUserData *ud = SQUserData::Create(_ss(v), size + SQ_ALIGNMENT);
     v->Push(ud);
     return (SQUserPointer)sq_aligning(ud + 1);
@@ -1624,15 +1625,14 @@ SQPRINTFUNCTION sq_geterrorfunc(HSQUIRRELVM v)
 
 void *sq_malloc(SQUnsignedInteger size)
 {
-    return SQ_MALLOC(size);
+    return sq_vm_malloc(size);
 }
 
 void *sq_realloc(void* p,SQUnsignedInteger oldsize,SQUnsignedInteger newsize)
 {
-    return SQ_REALLOC(p,oldsize,newsize);
+    return sq_vm_realloc(p,oldsize,newsize);
 }
 
-void sq_free(void *p,SQUnsignedInteger size)
-{
-    SQ_FREE(p,size);
+void sq_free(void *p, SQUnsignedInteger size) {
+    sq_vm_free(p, size);
 }

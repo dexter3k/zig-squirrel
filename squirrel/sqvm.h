@@ -138,8 +138,16 @@ public:
 
     static bool IsFalse(SQObjectPtr &o);
 
-    void Pop();
-    void Pop(SQInteger n);
+    inline void Pop() {
+        _stack[--_top].Null();
+    }
+
+    inline void Pop(SQInteger n) {
+        for (SQInteger i = 0; i < n; i++) {
+            _stack[--_top].Null();
+        }
+    }
+
     void Push(const SQObjectPtr &o);
     void PushNull();
     SQObjectPtr &Top();

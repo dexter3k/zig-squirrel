@@ -1211,27 +1211,34 @@ void SQVM::CallDebugHook(SQInteger type,SQInteger forcedline)
     _debughook = true;
 }
 
-bool SQVM::CallNative(SQNativeClosure *nclosure, SQInteger nargs, SQInteger newbase, SQObjectPtr &retval, SQInt32 target,bool &suspend, bool &tailcall)
-{
+bool SQVM::CallNative(
+    SQNativeClosure *nclosure,
+    SQInteger nargs,
+    SQInteger newbase,
+    SQObjectPtr &retval,
+    SQInt32 target,
+    bool &suspend,
+    bool &tailcall
+) {
     SQInteger nparamscheck = nclosure->_nparamscheck;
     SQInteger newtop = newbase + nargs + nclosure->_noutervalues;
 
     if (_nnativecalls + 1 > MAX_NATIVE_CALLS) {
-        Raise_Error(_SC("Native stack overflow"));
+        Raise_Error("Native stack overflow");
         return false;
     }
 
     if(nparamscheck && (((nparamscheck > 0) && (nparamscheck != nargs)) ||
         ((nparamscheck < 0) && (nargs < (-nparamscheck)))))
     {
-        Raise_Error(_SC("wrong number of parameters"));
+        Raise_Error("wrong number of parameters");
         return false;
     }
 
-    SQInteger tcs;
-    SQIntVec &tc = nclosure->_typecheck;
-    if((tcs = tc.size())) {
-        for(SQInteger i = 0; i < nargs && i < tcs; i++) {
+    SQIntVec & tc = nclosure->_typecheck;
+    SQInteger tcs = tc.size();
+    if (tcs) {
+        for (SQInteger i = 0; i < nargs && i < tcs; i++) {
             if((tc._vals[i] != -1) && !(sq_type(_stack._vals[newbase+i]) & tc._vals[i])) {
                 Raise_ParamTypeError(i,tc._vals[i], sq_type(_stack._vals[newbase+i]));
                 return false;
@@ -1771,16 +1778,6 @@ void SQVM::Remove(SQInteger n) {
     }
     _stack[_top].Null();
     _top--;
-}
-
-void SQVM::Pop() {
-    _stack[--_top].Null();
-}
-
-void SQVM::Pop(SQInteger n) {
-    for(SQInteger i = 0; i < n; i++){
-        _stack[--_top].Null();
-    }
 }
 
 void SQVM::PushNull() { _stack[_top++].Null(); }

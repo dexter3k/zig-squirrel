@@ -105,7 +105,7 @@ private:
 public:
     static SQOuter *Create(SQSharedState *ss, SQObjectPtr *outer)
     {
-        SQOuter *nc  = (SQOuter*)SQ_MALLOC(sizeof(SQOuter));
+        SQOuter *nc  = (SQOuter*)sq_vm_malloc(sizeof(SQOuter));
         new (nc) SQOuter(ss, outer);
         return nc;
     }
@@ -137,7 +137,7 @@ private:
     SQGenerator(SQSharedState *ss,SQClosure *closure){_closure=closure;_state=eRunning;_ci._generator=NULL;INIT_CHAIN();ADD_TO_CHAIN(&_ss(this)->_gc_chain,this);}
 public:
     static SQGenerator *Create(SQSharedState *ss,SQClosure *closure){
-        SQGenerator *nc=(SQGenerator*)SQ_MALLOC(sizeof(SQGenerator));
+        SQGenerator *nc=(SQGenerator*)sq_vm_malloc(sizeof(SQGenerator));
         new (nc) SQGenerator(ss,closure);
         return nc;
     }
@@ -177,7 +177,7 @@ public:
     static SQNativeClosure *Create(SQSharedState *ss,SQFUNCTION func,SQInteger nouters)
     {
         SQInteger size = _CALC_NATVIVECLOSURE_SIZE(nouters);
-        SQNativeClosure *nc=(SQNativeClosure*)SQ_MALLOC(size);
+        SQNativeClosure *nc=(SQNativeClosure*)sq_vm_malloc(size);
         new (nc) SQNativeClosure(ss,func);
         nc->_outervalues = (SQObjectPtr *)(nc + 1);
         nc->_noutervalues = nouters;

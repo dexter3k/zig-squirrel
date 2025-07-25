@@ -109,13 +109,6 @@ SQRefCounted::~SQRefCounted()
     }
 }
 
-void SQWeakRef::Release() {
-    if(ISREFCOUNTED(_obj._type)) {
-        _obj._unVal.pRefCounted->_weakref = NULL;
-    }
-    sq_delete(this,SQWeakRef);
-}
-
 bool SQDelegable::GetMetaMethod(SQVM *v,SQMetaMethod mm,SQObjectPtr &res) {
     if(_delegate) {
         return _delegate->Get((*_ss(v)->_metamethods)[mm],res);

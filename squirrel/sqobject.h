@@ -88,16 +88,29 @@ struct SQRefCounted {
     SQUnsignedInteger _uiRef;
     struct SQWeakRef *_weakref;
 
-    SQRefCounted() { _uiRef = 0; _weakref = NULL; }
+    SQRefCounted()
+        : _uiRef(0)
+        , _weakref(nullptr)
+    {}
+
     virtual ~SQRefCounted();
-    SQWeakRef *GetWeakRef(SQObjectType type);
+
+    SQWeakRef * GetWeakRef(SQObjectType type);
+
     virtual void Release() = 0;
 };
 
-struct SQWeakRef : SQRefCounted
-{
-    void Release();
+struct SQWeakRef : SQRefCounted {
     SQObject _obj;
+
+    void Release() {
+        if (ISREFCOUNTED(_obj._type)) {
+            _obj._unVal.pRefCounted->_weakref = NULL;
+        }
+
+        this->~SQWeakRef();
+        sq_vm_free(this, sizeof(SQWeakRef));
+    }
 };
 
 #define _realval(o) (sq_type((o)) != OT_WEAKREF?(SQObject)o:_weakref(o)->_obj)
@@ -156,18 +169,11 @@ static inline void __ObjAddRef(SQRefCounted * rc) {
 
 #define tofloat(num) ((sq_type(num)==OT_INTEGER)?(SQFloat)_integer(num):_float(num))
 #define tointeger(num) ((sq_type(num)==OT_FLOAT)?(SQInteger)_float(num):_integer(num))
-/////////////////////////////////////////////////////////////////////////////////////
-/////////////////////////////////////////////////////////////////////////////////////
-#if defined(SQUSEDOUBLE) && !defined(_SQ64) || !defined(SQUSEDOUBLE) && defined(_SQ64)
-#define SQ_REFOBJECT_INIT() SQ_OBJECT_RAWINIT()
-#else
-#define SQ_REFOBJECT_INIT()
-#endif
 
 #define _REF_TYPE_DECL(type,_class,sym) \
     SQObjectPtr(_class * x) \
     { \
-        SQ_OBJECT_RAWINIT() \
+        _unVal.raw = 0; \
         _type=type; \
         _unVal.sym = x; \
         assert(_unVal.pTable); \
@@ -180,7 +186,7 @@ static inline void __ObjAddRef(SQRefCounted * rc) {
         tOldType=_type; \
         unOldVal=_unVal; \
         _type = type; \
-        SQ_REFOBJECT_INIT() \
+        _unVal.raw = 0; \
         _unVal.sym = x; \
         _unVal.pRefCounted->_uiRef++; \
         __Release(tOldType,unOldVal); \
@@ -190,7 +196,7 @@ static inline void __ObjAddRef(SQRefCounted * rc) {
 #define _SCALAR_TYPE_DECL(type,_class,sym) \
     SQObjectPtr(_class x) \
     { \
-        SQ_OBJECT_RAWINIT() \
+        _unVal.raw = 0; \
         _type=type; \
         _unVal.sym = x; \
     } \
@@ -198,30 +204,30 @@ static inline void __ObjAddRef(SQRefCounted * rc) {
     {  \
         __Release(_type,_unVal); \
         _type = type; \
-        SQ_OBJECT_RAWINIT() \
+        _unVal.raw = 0; \
         _unVal.sym = x; \
         return *this; \
     }
-struct SQObjectPtr : public SQObject
-{
-    SQObjectPtr()
-    {
-        SQ_OBJECT_RAWINIT()
-        _type=OT_NULL;
-        _unVal.pUserPointer=NULL;
+struct SQObjectPtr : public SQObject {
+    SQObjectPtr() {
+        _type = OT_NULL;
+        _unVal.raw = 0;
     }
-    SQObjectPtr(const SQObjectPtr &o)
-    {
+
+    SQObjectPtr(SQObjectPtr const & o) {
         _type = o._type;
         _unVal = o._unVal;
-        __AddRef(_type,_unVal);
+
+        __AddRef(_type, _unVal);
     }
-    SQObjectPtr(const SQObject &o)
-    {
+
+    SQObjectPtr(const SQObject &o) {
         _type = o._type;
         _unVal = o._unVal;
-        __AddRef(_type,_unVal);
+
+        __AddRef(_type, _unVal);
     }
+
     _REF_TYPE_DECL(OT_TABLE,SQTable,pTable)
     _REF_TYPE_DECL(OT_CLASS,SQClass,pClass)
     _REF_TYPE_DECL(OT_INSTANCE,SQInstance,pInstance)
@@ -240,16 +246,17 @@ struct SQObjectPtr : public SQObject
     _SCALAR_TYPE_DECL(OT_FLOAT,SQFloat,fFloat)
     _SCALAR_TYPE_DECL(OT_USERPOINTER,SQUserPointer,pUserPointer)
 
-    SQObjectPtr(bool bBool)
-    {
-        SQ_OBJECT_RAWINIT()
+    SQObjectPtr(bool bBool) {
+        _unVal.raw = 0;
+
         _type = OT_BOOL;
         _unVal.nInteger = bBool?1:0;
     }
-    inline SQObjectPtr& operator=(bool b)
-    {
+
+    inline SQObjectPtr& operator=(bool b) {
         __Release(_type,_unVal);
-        SQ_OBJECT_RAWINIT()
+        _unVal.raw = 0;
+
         _type = OT_BOOL;
         _unVal.nInteger = b?1:0;
         return *this;
@@ -284,14 +291,13 @@ struct SQObjectPtr : public SQObject
         __Release(tOldType,unOldVal);
         return *this;
     }
-    inline void Null()
-    {
-        SQObjectType tOldType = _type;
-        SQObjectValue unOldVal = _unVal;
+
+    inline void Null() {
+        if (ISREFCOUNTED(_type)) __ObjRelease(_unVal.pRefCounted);
         _type = OT_NULL;
-        _unVal.raw = (SQRawObjectVal)NULL;
-        __Release(tOldType ,unOldVal);
+        _unVal.raw = 0;
     }
+
     private:
         SQObjectPtr(const SQChar *){} //safety
 };

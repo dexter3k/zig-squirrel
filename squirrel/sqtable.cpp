@@ -32,7 +32,7 @@ void SQTable::Remove(const SQObjectPtr &key)
 
 void SQTable::AllocNodes(SQInteger nSize)
 {
-    _HashNode *nodes=(_HashNode *)SQ_MALLOC(sizeof(_HashNode)*nSize);
+    _HashNode *nodes=(_HashNode *)sq_vm_malloc(sizeof(_HashNode)*nSize);
     for(SQInteger i=0;i<nSize;i++){
         _HashNode &n = nodes[i];
         new (&n) _HashNode;
@@ -67,7 +67,7 @@ void SQTable::Rehash(bool force)
     }
     for(SQInteger k=0;k<oldsize;k++)
         nold[k].~_HashNode();
-    SQ_FREE(nold,oldsize*sizeof(_HashNode));
+    sq_vm_free(nold,oldsize*sizeof(_HashNode));
 }
 
 SQTable *SQTable::Clone()

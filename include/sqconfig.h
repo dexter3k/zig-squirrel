@@ -22,10 +22,8 @@ typedef float SQFloat;
 
 #if defined(SQUSEDOUBLE) && !defined(_SQ64) || !defined(SQUSEDOUBLE) && defined(_SQ64)
 typedef int64_t SQRawObjectVal;
-#define SQ_OBJECT_RAWINIT() { _unVal.raw = 0; }
 #else
 typedef SQUnsignedInteger SQRawObjectVal; //is 32 bits on 32 bits builds and 64 bits otherwise
-#define SQ_OBJECT_RAWINIT()
 #endif
 
 // This is likely wrong?

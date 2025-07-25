@@ -119,7 +119,9 @@ typedef enum tagSQObjectType {
     OT_OUTER =          (_RT_OUTER|SQOBJECT_REF_COUNTED) //internal usage only
 } SQObjectType;
 
-#define ISREFCOUNTED(t) (t&SQOBJECT_REF_COUNTED)
+static inline int ISREFCOUNTED(SQObjectType t) {
+    return t & SQOBJECT_REF_COUNTED;
+}
 
 typedef union tagSQObjectValue {
     SQRawObjectVal raw;
