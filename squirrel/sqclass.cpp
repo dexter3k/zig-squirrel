@@ -39,8 +39,10 @@ void SQClass::Finalize() {
     _methods.resize(0);
     _NULL_SQOBJECT_VECTOR(_metamethods,MT_LAST);
     __ObjRelease(_members);
+    _members = nullptr;
     if(_base) {
         __ObjRelease(_base);
+        _base = nullptr;
     }
 }
 
@@ -183,6 +185,7 @@ void SQInstance::Finalize()
 {
     SQUnsignedInteger nvalues = _class->_defaultvalues.size();
     __ObjRelease(_class);
+    _class = nullptr;
     _NULL_SQOBJECT_VECTOR(_values,nvalues);
 }
 

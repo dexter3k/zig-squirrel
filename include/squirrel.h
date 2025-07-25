@@ -22,10 +22,6 @@ THE SOFTWARE.
 #ifndef _SQUIRREL_H_
 #define _SQUIRREL_H_
 
-#ifdef _SQ_CONFIG_INCLUDE
-#include _SQ_CONFIG_INCLUDE
-#endif
-
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -58,10 +54,6 @@ struct SQClass;
 struct SQInstance;
 struct SQDelegable;
 struct SQOuter;
-
-#ifdef _UNICODE
-#define SQUNICODE
-#endif
 
 #include "sqconfig.h"
 
@@ -106,7 +98,7 @@ struct SQOuter;
 #define _RT_WEAKREF         0x00010000
 #define _RT_OUTER           0x00020000
 
-typedef enum tagSQObjectType{
+typedef enum tagSQObjectType {
     OT_NULL =           (_RT_NULL|SQOBJECT_CANBEFALSE),
     OT_INTEGER =        (_RT_INTEGER|SQOBJECT_NUMERIC|SQOBJECT_CANBEFALSE),
     OT_FLOAT =          (_RT_FLOAT|SQOBJECT_NUMERIC|SQOBJECT_CANBEFALSE),
@@ -125,10 +117,9 @@ typedef enum tagSQObjectType{
     OT_INSTANCE =       (_RT_INSTANCE|SQOBJECT_REF_COUNTED|SQOBJECT_DELEGABLE),
     OT_WEAKREF =        (_RT_WEAKREF|SQOBJECT_REF_COUNTED),
     OT_OUTER =          (_RT_OUTER|SQOBJECT_REF_COUNTED) //internal usage only
-}SQObjectType;
+} SQObjectType;
 
 #define ISREFCOUNTED(t) (t&SQOBJECT_REF_COUNTED)
-
 
 typedef union tagSQObjectValue {
     SQRawObjectVal raw;
@@ -156,23 +147,21 @@ typedef union tagSQObjectValue {
     struct SQDelegable *pDelegable;
 } SQObjectValue;
 
-
-typedef struct tagSQObject
-{
+typedef struct tagSQObject {
     SQObjectType _type;
     SQObjectValue _unVal;
-}SQObject;
+} SQObject;
 
-typedef struct  tagSQMemberHandle{
+typedef struct  tagSQMemberHandle {
     SQBool _static;
     SQInteger _index;
-}SQMemberHandle;
+} SQMemberHandle;
 
-typedef struct tagSQStackInfos{
-    const SQChar* funcname;
-    const SQChar* source;
+typedef struct tagSQStackInfos {
+    SQChar const* funcname;
+    SQChar const* source;
     SQInteger line;
-}SQStackInfos;
+} SQStackInfos;
 
 typedef struct SQVM* HSQUIRRELVM;
 typedef SQObject HSQOBJECT;
@@ -391,9 +380,6 @@ SQUIRREL_API void sq_setnativedebughook(HSQUIRRELVM v,SQDEBUGHOOK hook);
 #define sq_isbool(o) ((o)._type==OT_BOOL)
 #define sq_isweakref(o) ((o)._type==OT_WEAKREF)
 #define sq_type(o) ((o)._type)
-
-/* deprecated */
-#define sq_createslot(v,n) sq_newslot(v,n,SQFalse)
 
 #define SQ_OK (0)
 #define SQ_ERROR (-1)

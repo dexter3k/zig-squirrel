@@ -1760,6 +1760,7 @@ void SQVM::CloseOuters(SQObjectPtr *stackindex) {
     p->_valptr = &p->_value;
     _openouters = p->_next;
     __ObjRelease(p);
+    p = nullptr;
   }
 }
 

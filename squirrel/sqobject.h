@@ -114,17 +114,18 @@ struct SQObjectPtr;
             unval.pRefCounted->Release();   \
         }
 
-#define __ObjRelease(obj) { \
-    if((obj)) { \
-        (obj)->_uiRef--; \
-        if((obj)->_uiRef == 0) \
-            (obj)->Release(); \
-        (obj) = NULL;   \
-    } \
+static inline void __ObjRelease(SQRefCounted * rc) {
+    if (rc) {
+        rc->_uiRef--;
+
+        if (rc->_uiRef == 0) {
+            rc->Release();
+        }
+    }
 }
 
-#define __ObjAddRef(obj) { \
-    (obj)->_uiRef++; \
+static inline void __ObjAddRef(SQRefCounted * rc) {
+    rc->_uiRef++;
 }
 
 #define is_delegable(t) (sq_type(t)&SQOBJECT_DELEGABLE)

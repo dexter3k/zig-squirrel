@@ -10,35 +10,56 @@ struct SQClass;
 struct SQClosure : public CHAINABLE_OBJ
 {
 private:
-    SQClosure(SQSharedState *ss,SQFunctionProto *func){_function = func; __ObjAddRef(_function); _base = NULL; INIT_CHAIN();ADD_TO_CHAIN(&_ss(this)->_gc_chain,this); _env = NULL; _root=NULL;}
+    SQClosure(SQSharedState *ss, SQFunctionProto *func) {
+        _function = func;
+        __ObjAddRef(_function);
+        _base = NULL;
+        INIT_CHAIN();
+        ADD_TO_CHAIN(&_ss(this)->_gc_chain, this);
+        _env = NULL;
+        _root = NULL;
+    }
 public:
-    static SQClosure *Create(SQSharedState *ss,SQFunctionProto *func,SQWeakRef *root){
-        SQInteger size = _CALC_CLOSURE_SIZE(func);
-        SQClosure *nc=(SQClosure*)SQ_MALLOC(size);
-        new (nc) SQClosure(ss,func);
-        nc->_outervalues = (SQObjectPtr *)(nc + 1);
-        nc->_defaultparams = &nc->_outervalues[func->_noutervalues];
+    static SQClosure * Create(SQSharedState * ss, SQFunctionProto * func, SQWeakRef * root) {
+        SQClosure * nc = (SQClosure *)sq_vm_malloc(sizeof(SQClosure));
+        auto outervalues = (SQObjectPtr *)sq_vm_malloc(func->_noutervalues * sizeof(SQObjectPtr));
+        auto defaultparams = (SQObjectPtr *)sq_vm_malloc(func->_ndefaultparams * sizeof(SQObjectPtr));
+
+        new (nc) SQClosure(ss, func);
+
+        nc->_outervalues = outervalues;
+        nc->_defaultparams = defaultparams;
         nc->_root = root;
+
          __ObjAddRef(nc->_root);
-        _CONSTRUCT_VECTOR(SQObjectPtr,func->_noutervalues,nc->_outervalues);
-        _CONSTRUCT_VECTOR(SQObjectPtr,func->_ndefaultparams,nc->_defaultparams);
+
+        _CONSTRUCT_VECTOR(SQObjectPtr, func->_noutervalues, nc->_outervalues);
+        _CONSTRUCT_VECTOR(SQObjectPtr, func->_ndefaultparams, nc->_defaultparams);
+
         return nc;
     }
+
     void Release(){
-        SQFunctionProto *f = _function;
-        SQInteger size = _CALC_CLOSURE_SIZE(f);
-        _DESTRUCT_VECTOR(SQObjectPtr,f->_noutervalues,_outervalues);
-        _DESTRUCT_VECTOR(SQObjectPtr,f->_ndefaultparams,_defaultparams);
+        _DESTRUCT_VECTOR(SQObjectPtr, _function->_noutervalues, _outervalues);
+        sq_vm_free(_outervalues, _function->_noutervalues * sizeof(SQObjectPtr));
+
+        _DESTRUCT_VECTOR(SQObjectPtr, _function->_ndefaultparams, _defaultparams);
+        sq_vm_free(_defaultparams, _function->_ndefaultparams * sizeof(SQObjectPtr));
+
         __ObjRelease(_function);
+        _function = nullptr;
+
         this->~SQClosure();
-        sq_vm_free(this,size);
+        sq_vm_free(this, sizeof(SQClosure));
     }
+
     void SetRoot(SQWeakRef *r)
     {
         __ObjRelease(_root);
         _root = r;
         __ObjAddRef(_root);
     }
+
     SQClosure *Clone()
     {
         SQFunctionProto *f = _function;
@@ -49,6 +70,7 @@ public:
         _COPY_VECTOR(ret->_defaultparams,_defaultparams,f->_ndefaultparams);
         return ret;
     }
+
     ~SQClosure();
 
     bool Save(SQVM *v,SQUserPointer up,SQWRITEFUNC write);
@@ -173,6 +195,7 @@ public:
     ~SQNativeClosure()
     {
         __ObjRelease(_env);
+        _env = nullptr;
         REMOVE_FROM_CHAIN(&_ss(this)->_gc_chain,this);
     }
     void Release(){
