@@ -331,7 +331,7 @@ struct SQCollectable : public SQRefCounted {
 #else
 
 #define ADD_TO_CHAIN(chain,obj) ((void)0)
-#define REMOVE_FROM_CHAIN(chain,obj) ((void)0)
+#define REMOVE_FROM_CHAIN(chain, obj) ((void)0)
 #define CHAINABLE_OBJ SQRefCounted
 #define INIT_CHAIN() ((void)0)
 #endif

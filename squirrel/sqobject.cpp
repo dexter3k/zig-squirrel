@@ -273,15 +273,12 @@ SQInteger SQFunctionProto::GetLine(SQInstruction *curr)
     return line;
 }
 
-SQClosure::~SQClosure()
-{
+SQClosure::~SQClosure() {
     __ObjRelease(_root);
-    _root = nullptr;
     __ObjRelease(_env);
-    _env = nullptr;
     __ObjRelease(_base);
-    _base = nullptr;
-    REMOVE_FROM_CHAIN(&_ss(this)->_gc_chain,this);
+
+    REMOVE_FROM_CHAIN(&this->_sharedstate->_gc_chain, this);
 }
 
 #define _CHECK_IO(exp)  { if(!exp)return false; }
