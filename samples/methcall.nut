@@ -23,16 +23,14 @@ class NthToggle extends Toggle {
     count=0
 }
 
-function NthToggle::constructor(start_state,max_counter)
-{
+function NthToggle::constructor(start_state, max_counter) {
     base.constructor(start_state);
     count_max = max_counter
 }
 
-function NthToggle::activate ()
-{
+function NthToggle::activate () {
     ++count;
-    if (count >= count_max ) {
+    if (count >= count_max) {
       base.activate();
       count = 0;
     }
@@ -43,14 +41,11 @@ function NthToggle::activate ()
 function main() {
     local n = vargv.len()!=0?vargv[0].tointeger():1
 
-
-
     local val = 1;
     local toggle = Toggle(val);
     local i = n;
     while(i--) {
       val = toggle.activate().value();
-
     }
     print(toggle.value() ? "true\n" : "false\n");
 

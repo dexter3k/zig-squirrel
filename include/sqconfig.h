@@ -10,7 +10,7 @@ typedef int32_t SQInteger;
 typedef uint32_t SQUnsignedInteger;
 #endif
 
-typedef uintptr_t SQHash; // todo: _SQ64 on 32-bit machines?
+typedef uintptr_t SQHash;
 typedef int32_t SQInt32;
 typedef uint32_t SQUnsignedInteger32;
 

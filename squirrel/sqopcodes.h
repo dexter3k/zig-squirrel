@@ -106,14 +106,16 @@ struct SQInstructionDesc {
     const SQChar *name;
 };
 
-struct SQInstruction
-{
-    SQInstruction(){};
-    SQInstruction(SQOpcode _op,SQInteger a0=0,SQInteger a1=0,SQInteger a2=0,SQInteger a3=0)
-    {   op = (unsigned char)_op;
-        _arg0 = (unsigned char)a0;_arg1 = (SQInt32)a1;
-        _arg2 = (unsigned char)a2;_arg3 = (unsigned char)a3;
-    }
+struct SQInstruction {
+    SQInstruction() {}
+
+    SQInstruction(SQOpcode _op, SQInteger a0 = 0, SQInteger a1 = 0, SQInteger a2 = 0, SQInteger a3 = 0)
+        : _arg1(a1)
+        , op(_op)
+        , _arg0(a0)
+        , _arg2(a2)
+        , _arg3(a3)
+    {}
 
 
     SQInt32 _arg1;

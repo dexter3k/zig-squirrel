@@ -69,19 +69,47 @@ struct SQScope {
                     if(__nbreaks__>0)ResolveBreaks(_fs,__nbreaks__); \
                     _fs->_breaktargets.pop_back();_fs->_continuetargets.pop_back();}
 
-class SQCompiler
-{
+class SQCompiler {
+    SQInteger _token;
+    SQFuncState *_fs;
+    SQObjectPtr _sourcename;
+    SQLexer _lex;
+    bool _lineinfo;
+    bool _raiseerror;
+    SQInteger _debugline;
+    SQInteger _debugop;
+    SQExpState   _es;
+    SQScope _scope;
+    SQChar _compilererror[MAX_COMPILER_ERROR_LEN];
+    jmp_buf _errorjmp;
+    SQVM *_vm;
 public:
-    SQCompiler(SQVM *v, SQLEXREADFUNC rg, SQUserPointer up, const SQChar* sourcename, bool raiseerror, bool lineinfo)
+    SQCompiler(
+        SQVM *v,
+        SQLEXREADFUNC rg,
+        SQUserPointer up,
+        const SQChar* sourcename,
+        bool raiseerror,
+        bool lineinfo
+    )
+        : _token()
+        , _fs()
+        , _sourcename(SQString::Create(v->_sharedstate, sourcename))
+        , _lex(rg, up, ThrowError, this)
+        , _lineinfo(lineinfo)
+        , _raiseerror(raiseerror)
+        , _debugline(0)
+        , _debugop(0)
+
+        , _vm(v)
     {
-        _vm=v;
-        _lex.Init(_ss(v), rg, up,ThrowError,this);
-        _sourcename = SQString::Create(_ss(v), sourcename);
-        _lineinfo = lineinfo;_raiseerror = raiseerror;
+        _lex.Init();
+
         _scope.outers = 0;
         _scope.stacksize = 0;
         _compilererror[0] = _SC('\0');
     }
+
     static void ThrowError(void *ud, const SQChar *s) {
         SQCompiler *c = (SQCompiler *)ud;
         c->Error(s);
@@ -110,16 +138,16 @@ public:
                     switch(tok)
                     {
                     case TK_IDENTIFIER:
-                        etypename = _SC("IDENTIFIER");
+                        etypename = "IDENTIFIER";
                         break;
                     case TK_STRING_LITERAL:
-                        etypename = _SC("STRING_LITERAL");
+                        etypename = "STRING_LITERAL";
                         break;
                     case TK_INTEGER:
-                        etypename = _SC("INTEGER");
+                        etypename = "INTEGER";
                         break;
                     case TK_FLOAT:
-                        etypename = _SC("FLOAT");
+                        etypename = "FLOAT";
                         break;
                     default:
                         etypename = _lex.Tok2Str(tok);
@@ -168,8 +196,8 @@ public:
         _debugline = 1;
         _debugop = 0;
 
-        SQFuncState funcstate(_ss(_vm), NULL,ThrowError,this);
-        funcstate._name = SQString::Create(_ss(_vm), _SC("main"));
+        SQFuncState funcstate(_vm->_sharedstate, NULL,ThrowError,this);
+        funcstate._name = SQString::Create(_vm->_sharedstate, _SC("main"));
         _fs = &funcstate;
         _fs->AddParameter(_fs->CreateString(_SC("this")));
         _fs->AddParameter(_fs->CreateString(_SC("vargv")));
@@ -1613,20 +1641,6 @@ public:
             ntoresolve--;
         }
     }
-private:
-    SQInteger _token;
-    SQFuncState *_fs;
-    SQObjectPtr _sourcename;
-    SQLexer _lex;
-    bool _lineinfo;
-    bool _raiseerror;
-    SQInteger _debugline;
-    SQInteger _debugop;
-    SQExpState   _es;
-    SQScope _scope;
-    SQChar _compilererror[MAX_COMPILER_ERROR_LEN];
-    jmp_buf _errorjmp;
-    SQVM *_vm;
 };
 
 bool Compile(SQVM *vm,SQLEXREADFUNC rg, SQUserPointer up, const SQChar *sourcename, SQObjectPtr &out, bool raiseerror, bool lineinfo)

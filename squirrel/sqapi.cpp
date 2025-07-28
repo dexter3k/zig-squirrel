@@ -39,14 +39,13 @@ SQInteger sq_aux_invalidtype(HSQUIRRELVM v,SQObjectType type)
     return sq_throwerror(v, _ss(v)->GetScratchPad(-1));
 }
 
-HSQUIRRELVM sq_open(SQInteger initialstacksize)
-{
-    SQSharedState *ss;
-    SQVM *v;
-    sq_new(ss, SQSharedState);
-    ss->Init();
-    v = (SQVM *)sq_vm_malloc(sizeof(SQVM));
+HSQUIRRELVM sq_open(SQInteger initialstacksize) {
+    SQSharedState *ss = (SQSharedState *)sq_vm_malloc(sizeof(SQSharedState));
+    new (ss) SQSharedState;
+
+    SQVM * v = (SQVM *)sq_vm_malloc(sizeof(SQVM));
     new (v) SQVM(ss);
+
     ss->_root_vm = v;
     if(v->Init(NULL, initialstacksize)) {
         return v;
@@ -226,16 +225,17 @@ SQUserPointer sq_objtouserpointer(const HSQOBJECT *o)
     return 0;
 }
 
-void sq_pushnull(HSQUIRRELVM v)
-{
+void sq_pushnull(HSQUIRRELVM v) {
     v->PushNull();
 }
 
-void sq_pushstring(HSQUIRRELVM v,const SQChar *s,SQInteger len)
-{
-    if(s)
-        v->Push(SQObjectPtr(SQString::Create(_ss(v), s, len)));
-    else v->PushNull();
+void sq_pushstring(HSQUIRRELVM v, const SQChar *s, SQInteger len) {
+    if (!s) {
+        v->PushNull();
+        return;
+    }
+    
+    v->Push(SQObjectPtr(v->_sharedstate->_stringtable.Add(s, len)));
 }
 
 void sq_pushinteger(HSQUIRRELVM v,SQInteger n)
@@ -420,7 +420,7 @@ SQRESULT sq_setnativeclosurename(HSQUIRRELVM v,SQInteger idx,const SQChar *name)
     SQObject o = stack_get(v, idx);
     if(sq_isnativeclosure(o)) {
         SQNativeClosure *nc = _nativeclosure(o);
-        nc->_name = SQString::Create(_ss(v),name);
+        nc->_name = v->_sharedstate->_stringtable.Add(name, -1);
         return SQ_OK;
     }
     return sq_throwerror(v,_SC("the object is not a nativeclosure"));
@@ -434,7 +434,7 @@ SQRESULT sq_setparamscheck(HSQUIRRELVM v,SQInteger nparamscheck,const SQChar *ty
     SQNativeClosure *nc = _nativeclosure(o);
     nc->_nparamscheck = nparamscheck;
     if(typemask) {
-        SQIntVec res;
+        sqvector<SQInteger> res;
         if(!CompileTypemask(res, typemask))
             return sq_throwerror(v, _SC("invalid typemask"));
         nc->_typecheck.copy(res);
@@ -1131,9 +1131,8 @@ void sq_resetobject(HSQOBJECT *po)
     po->_unVal.pUserPointer=NULL;po->_type=OT_NULL;
 }
 
-SQRESULT sq_throwerror(HSQUIRRELVM v,const SQChar *err)
-{
-    v->_lasterror=SQString::Create(_ss(v),err);
+SQRESULT sq_throwerror(HSQUIRRELVM v, SQChar const * err) {
+    v->_lasterror = v->_sharedstate->_stringtable.Add(err, -1);
     return SQ_ERROR;
 }
 

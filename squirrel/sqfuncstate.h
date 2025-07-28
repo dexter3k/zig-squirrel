@@ -1,11 +1,42 @@
-/*  see copyright notice in squirrel.h */
-#ifndef _SQFUNCSTATE_H_
-#define _SQFUNCSTATE_H_
-///////////////////////////////////
+#pragma once
+
 #include "squtils.h"
 
-struct SQFuncState
-{
+class SQFuncState {
+    CompilerErrorFunc _errfunc;
+    void *_errtarget;
+public:
+    SQInteger _returnexp;
+    SQLocalVarInfoVec _vlocals;
+    sqvector<SQInteger> _targetstack;
+    SQInteger _stacksize;
+    bool _varparams;
+    bool _bgenerator;
+    sqvector<SQInteger> _unresolvedbreaks;
+    sqvector<SQInteger> _unresolvedcontinues;
+    sqvector<SQObjectPtr> _functions;
+    sqvector<SQObjectPtr> _parameters;
+    SQOuterVarVec _outervalues;
+    SQInstructionVec _instructions;
+    SQLocalVarInfoVec _localvarinfos;
+    SQObjectPtr _literals;
+    SQObjectPtr _strings;
+    SQObjectPtr _name;
+    SQObjectPtr _sourcename;
+    SQInteger _nliterals;
+    SQLineInfoVec _lineinfos;
+    SQFuncState *_parent;
+    sqvector<SQInteger> _scope_blocks;
+    sqvector<SQInteger> _breaktargets;
+    sqvector<SQInteger> _continuetargets;
+    sqvector<SQInteger> _defaultparams;
+    SQInteger _lastline;
+    SQInteger _traps; //contains number of nested exception traps
+    SQInteger _outers;
+    bool _optimization;
+    SQSharedState *_sharedstate;
+    sqvector<SQFuncState*> _childstates;
+
     SQFuncState(SQSharedState *ss,SQFuncState *parent,CompilerErrorFunc efunc,void *ed);
     ~SQFuncState();
 #ifdef _DEBUG_DUMP
@@ -30,7 +61,6 @@ struct SQFuncState
     SQInteger GetNumericConstant(const SQFloat cons);
     SQInteger PushLocalVariable(const SQObject &name);
     void AddParameter(const SQObject &name);
-    //void AddOuterValue(const SQObject &name);
     SQInteger GetLocalVariable(const SQObject &name);
     void MarkLocalAsOuter(SQInteger pos);
     SQInteger GetOuterVariable(const SQObject &name);
@@ -49,43 +79,5 @@ struct SQFuncState
     SQObject CreateString(const SQChar *s,SQInteger len = -1);
     SQObject CreateTable();
     bool IsConstant(const SQObject &name,SQObject &e);
-    SQInteger _returnexp;
-    SQLocalVarInfoVec _vlocals;
-    SQIntVec _targetstack;
-    SQInteger _stacksize;
-    bool _varparams;
-    bool _bgenerator;
-    SQIntVec _unresolvedbreaks;
-    SQIntVec _unresolvedcontinues;
-    SQObjectPtrVec _functions;
-    SQObjectPtrVec _parameters;
-    SQOuterVarVec _outervalues;
-    SQInstructionVec _instructions;
-    SQLocalVarInfoVec _localvarinfos;
-    SQObjectPtr _literals;
-    SQObjectPtr _strings;
-    SQObjectPtr _name;
-    SQObjectPtr _sourcename;
-    SQInteger _nliterals;
-    SQLineInfoVec _lineinfos;
-    SQFuncState *_parent;
-    SQIntVec _scope_blocks;
-    SQIntVec _breaktargets;
-    SQIntVec _continuetargets;
-    SQIntVec _defaultparams;
-    SQInteger _lastline;
-    SQInteger _traps; //contains number of nested exception traps
-    SQInteger _outers;
-    bool _optimization;
-    SQSharedState *_sharedstate;
-    sqvector<SQFuncState*> _childstates;
     SQInteger GetConstant(const SQObject &cons);
-private:
-    CompilerErrorFunc _errfunc;
-    void *_errtarget;
-    SQSharedState *_ss;
 };
-
-
-#endif //_SQFUNCSTATE_H_
-

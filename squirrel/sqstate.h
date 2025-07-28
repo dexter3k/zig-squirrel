@@ -4,26 +4,12 @@
 
 #include "squtils.h"
 #include "sqobject.h"
+#include "string_table.h"
+
 struct SQString;
 struct SQTable;
 //max number of character for a printed number
 #define NUMBER_MAX_CHAR 50
-
-struct SQStringTable
-{
-    SQStringTable(SQSharedState*ss);
-    ~SQStringTable();
-    SQString *Add(const SQChar *,SQInteger len);
-    SQString* Concat(const SQChar* a, SQInteger alen, const SQChar* b, SQInteger blen);
-    void Remove(SQString *);
-private:
-    void Resize(SQInteger size);
-    void AllocNodes(SQInteger size);
-    SQString **_strings;
-    SQUnsignedInteger _numofslots;
-    SQUnsignedInteger _slotused;
-    SQSharedState *_sharedstate;
-};
 
 struct RefTable {
     struct RefNode {
@@ -52,37 +38,59 @@ private:
     RefNode **_buckets;
 };
 
-#define ADD_STRING(ss,str,len) ss->_stringtable->Add(str,len)
-#define REMOVE_STRING(ss,bstr) ss->_stringtable->Remove(bstr)
-
 struct SQObjectPtr;
 
-struct SQSharedState
-{
-    SQSharedState();
-    ~SQSharedState();
+struct SQSharedState {
+private:
     void Init();
 public:
+    SQSharedState()
+        : _metamethods()
+        , _systemstrings()
+        , _types()
+        , _stringtable(this)
+#ifndef NO_GARBAGE_COLLECTOR
+        , _gc_chain(nullptr)
+#endif
+        , _compilererrorhandler(nullptr)
+        , _printfunc(nullptr)
+        , _errorfunc(nullptr)
+        , _debuginfo(false)
+        , _notifyallexceptions(false)
+        , _foreignptr(nullptr)
+        , _releasehook(nullptr)
+        , _scratchpad(nullptr)
+        , _scratchpadsize(0)
+    {
+        Init();
+    }
+
+    ~SQSharedState();
+
     SQChar* GetScratchPad(SQInteger size);
     SQInteger GetMetaMethodIdxByName(const SQObjectPtr &name);
+
 #ifndef NO_GARBAGE_COLLECTOR
     SQInteger CollectGarbage(SQVM *vm);
     void RunMark(SQVM *vm,SQCollectable **tchain);
     void ResurrectUnreachable(SQVM * vm);
     static void MarkObject(SQObjectPtr &o,SQCollectable **chain);
 #endif
-    SQObjectPtrVec *_metamethods;
+
+    sqvector<SQObjectPtr> _metamethods;
     SQObjectPtr _metamethodsmap;
-    SQObjectPtrVec *_systemstrings;
-    SQObjectPtrVec *_types;
-    SQStringTable *_stringtable;
+    sqvector<SQObjectPtr> _systemstrings;
+    sqvector<SQObjectPtr> _types;
+    SQStringTable _stringtable;
     RefTable _refs_table;
     SQObjectPtr _registry;
     SQObjectPtr _consts;
     SQObjectPtr _constructoridx;
+
 #ifndef NO_GARBAGE_COLLECTOR
     SQCollectable *_gc_chain;
 #endif
+
     SQObjectPtr _root_vm;
     SQObjectPtr _table_default_delegate;
     static const SQRegFunction _table_default_delegate_funcz[];
@@ -131,7 +139,7 @@ private:
 #define _instance_ddel  _table(_sharedstate->_instance_default_delegate)
 #define _weakref_ddel   _table(_sharedstate->_weakref_default_delegate)
 
-bool CompileTypemask(SQIntVec &res,const SQChar *typemask);
+bool CompileTypemask(sqvector<SQInteger> &res,const SQChar *typemask);
 
 
 #endif //_SQSTATE_H_

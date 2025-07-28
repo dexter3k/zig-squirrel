@@ -89,6 +89,6 @@ public:
         sq_delete(this,SQArray);
     }
 
-    SQObjectPtrVec _values;
+    sqvector<SQObjectPtr> _values;
 };
 #endif //_SQARRAY_H_

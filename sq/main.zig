@@ -256,19 +256,19 @@ fn interactive(vm: csq.HSQUIRRELVM) void {
     }
 }
 
-// const squirrel = @import("squirrel.zig");
-// const Squirrel = squirrel.Squirrel(u32, f32, false);
+const squirrel = @import("squirrel.zig");
+const Squirrel = squirrel.Squirrel(u32, f32, false);
 
-// fn pg() !void {
-//     var debug_allocator: std.heap.DebugAllocator(.{}) = .init;
-//     defer _ = debug_allocator.deinit();
-//     const gpa = debug_allocator.allocator();
+fn pg() !void {
+    var debug_allocator: std.heap.DebugAllocator(.{}) = .init;
+    defer _ = debug_allocator.deinit();
+    const gpa = debug_allocator.allocator();
 
-//     const vm: *Squirrel.VM = try .init(gpa, .{ .initial_stack = 1024 });
-//     defer vm.deinit();
+    const vm: *Squirrel.VM = try .init(gpa, .{ .initial_stack = 1024 });
+    defer vm.deinit();
 
-//     std.debug.print("{any}\n", .{vm});
-// }
+    std.debug.print("{any}\n", .{vm});
+}
 
 pub fn main() !void {
     // Fix console output on Windows

@@ -161,7 +161,7 @@ public:
     SQObjectType GetType() {return OT_GENERATOR;}
 #endif
     SQObjectPtr _closure;
-    SQObjectPtrVec _stack;
+    sqvector<SQObjectPtr> _stack;
     SQVM::CallInfo _ci;
     ExceptionsTraps _etraps;
     SQGeneratorState _state;
@@ -214,7 +214,7 @@ public:
     SQObjectType GetType() {return OT_NATIVECLOSURE;}
 #endif
     SQInteger _nparamscheck;
-    SQIntVec _typecheck;
+    sqvector<SQInteger> _typecheck;
     SQObjectPtr *_outervalues;
     SQUnsignedInteger _noutervalues;
     SQWeakRef *_env;

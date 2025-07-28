@@ -155,7 +155,7 @@ public:
     SQObjectPtr &GetUp(SQInteger n);
     SQObjectPtr &GetAt(SQInteger n);
 
-    SQObjectPtrVec _stack;
+    sqvector<SQObjectPtr> _stack;
 
     SQInteger _top;
     SQInteger _stackbase;

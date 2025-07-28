@@ -11,6 +11,7 @@ pub fn build(b: *std.Build) void {
         .link_libcpp = true,
     });
     squirrel_lib_mod.addCMacro("_SQ64", "1");
+    // squirrel_lib_mod.addCMacro("_DEBUG_DUMP", "1");
     squirrel_lib_mod.addIncludePath(b.path("include/"));
     squirrel_lib_mod.addCSourceFiles(.{
         .root = b.path("squirrel/"),
@@ -27,6 +28,7 @@ pub fn build(b: *std.Build) void {
             "sqmem.cpp",
             "sqvm.cpp",
             "sqclass.cpp",
+            "string_table.cpp",
         },
         .flags = &.{
             "-Wall",
@@ -53,6 +55,7 @@ pub fn build(b: *std.Build) void {
         .link_libcpp = true,
     });
     sqstdlib_lib_mod.addCMacro("_SQ64", "1");
+    // sqstdlib_lib_mod.addCMacro("_DEBUG_DUMP", "1");
     sqstdlib_lib_mod.addIncludePath(b.path("include/"));
     sqstdlib_lib_mod.addCSourceFiles(.{
         .root = b.path("sqstdlib/"),
@@ -92,6 +95,7 @@ pub fn build(b: *std.Build) void {
         .link_libc = true,
     });
     sq_exe_mod.addCMacro("_SQ64", "1");
+    // sq_exe_mod.addCMacro("_DEBUG_DUMP", "1");
     sq_exe_mod.addIncludePath(b.path("include/"));
     sq_exe_mod.addCSourceFiles(.{
         .root = b.path("sq/"),

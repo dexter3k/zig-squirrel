@@ -9,7 +9,7 @@ see copyright notice in squirrel.h
 
 SQTable::SQTable(SQSharedState *ss,SQInteger nInitialSize)
 {
-    SQInteger pow2size=MINPOWER2;
+    SQInteger pow2size= 4;
     while(nInitialSize>pow2size)pow2size=pow2size<<1;
     AllocNodes(pow2size);
     _usednodes = 0;
@@ -53,7 +53,7 @@ void SQTable::Rehash(bool force)
     if (nelems >= oldsize-oldsize/4)  /* using more than 3/4? */
         AllocNodes(oldsize*2);
     else if (nelems <= oldsize/4 &&  /* less than 1/4? */
-        oldsize > MINPOWER2)
+        oldsize > 4)
         AllocNodes(oldsize/2);
     else if(force)
         AllocNodes(oldsize);
@@ -105,17 +105,20 @@ SQTable *SQTable::Clone()
     return nt;
 }
 
-bool SQTable::Get(const SQObjectPtr &key,SQObjectPtr &val)
-{
-    if(sq_type(key) == OT_NULL)
+bool SQTable::Get(SQObjectPtr const & key, SQObjectPtr & val) {
+    if(sq_type(key) == OT_NULL) {
         return false;
+    }
+
     _HashNode *n = _Get(key, HashObj(key) & (_numofnodes - 1));
     if (n) {
         val = _realval(n->val);
         return true;
     }
+
     return false;
 }
+
 bool SQTable::NewSlot(const SQObjectPtr &key,const SQObjectPtr &val)
 {
     assert(sq_type(key) != OT_NULL);

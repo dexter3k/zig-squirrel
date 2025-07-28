@@ -74,8 +74,7 @@ public:
         return NULL;
     }
     //for compiler use
-    inline bool GetStr(const SQChar* key,SQInteger keylen,SQObjectPtr &val)
-    {
+    inline bool GetStr(SQChar const * key, SQInteger keylen, SQObjectPtr & val) {
         SQHash hash = _hashstr(key,keylen);
         _HashNode *n = &_nodes[hash & (_numofnodes - 1)];
         _HashNode *res = NULL;
@@ -100,11 +99,11 @@ public:
 
     SQInteger CountUsed(){ return _usednodes;}
     void Clear();
-    void Release()
-    {
-        sq_delete(this, SQTable);
-    }
 
+    void Release() {
+        this->~SQTable();
+        sq_vm_free(this, sizeof(*this));
+    }
 };
 
 #endif //_SQTABLE_H_

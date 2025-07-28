@@ -41,26 +41,20 @@ const SQChar *IdType2Name(SQObjectType type)
     }
 }
 
-const SQChar *GetTypeName(const SQObjectPtr &obj1)
-{
+const SQChar *GetTypeName(const SQObjectPtr &obj1) {
     return IdType2Name(sq_type(obj1));
 }
 
-SQString *SQString::Create(SQSharedState *ss,const SQChar *s,SQInteger len)
-{
-    SQString *str=ADD_STRING(ss,s,len);
-    return str;
+SQString *SQString::Create(SQSharedState *ss,const SQChar *s, SQInteger len) {
+    return ss->_stringtable.Add(s, len);
 }
 
-SQString* SQString::Concat(SQSharedState* ss, const SQChar* a, SQInteger alen, const SQChar* b, SQInteger blen)
-{
-    SQString* str = ss->_stringtable->Concat(a, alen, b, blen);
-    return str;
+SQString* SQString::Concat(SQSharedState* ss, const SQChar* a, SQInteger alen, const SQChar* b, SQInteger blen) {
+    return ss->_stringtable.Concat(a, alen, b, blen);
 }
 
-void SQString::Release()
-{
-    REMOVE_STRING(_sharedstate,this);
+void SQString::Release() {
+    _sharedstate->_stringtable.Remove(this);
 }
 
 SQInteger SQString::Next(const SQObjectPtr &refpos, SQObjectPtr &outkey, SQObjectPtr &outval)
@@ -111,7 +105,7 @@ SQRefCounted::~SQRefCounted()
 
 bool SQDelegable::GetMetaMethod(SQVM *v,SQMetaMethod mm,SQObjectPtr &res) {
     if(_delegate) {
-        return _delegate->Get((*_ss(v)->_metamethods)[mm],res);
+        return _delegate->Get(v->_sharedstate->_metamethods[mm], res);
     }
     return false;
 }

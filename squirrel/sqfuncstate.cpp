@@ -86,25 +86,28 @@ void DumpLiteral(SQObjectPtr &o)
     }
 }
 
-SQFuncState::SQFuncState(SQSharedState *ss,SQFuncState *parent,CompilerErrorFunc efunc,void *ed)
+SQFuncState::SQFuncState(
+    SQSharedState *ss,
+    SQFuncState *parent,
+    CompilerErrorFunc efunc,
+    void *ed
+)
+    : _errfunc(efunc)
+    , _errtarget(ed)
+    , _sharedstate(ss)
 {
-        _nliterals = 0;
-        _literals = SQTable::Create(ss,0);
-        _strings =  SQTable::Create(ss,0);
-        _sharedstate = ss;
-        _lastline = 0;
-        _optimization = true;
-        _parent = parent;
-        _stacksize = 0;
-        _traps = 0;
-        _returnexp = 0;
-        _varparams = false;
-        _errfunc = efunc;
-        _errtarget = ed;
-        _bgenerator = false;
-        _outers = 0;
-        _ss = ss;
-
+    _nliterals = 0;
+    _literals = SQTable::Create(ss,0);
+    _strings =  SQTable::Create(ss,0);
+    _lastline = 0;
+    _optimization = true;
+    _parent = parent;
+    _stacksize = 0;
+    _traps = 0;
+    _returnexp = 0;
+    _varparams = false;
+    _bgenerator = false;
+    _outers = 0;
 }
 
 void SQFuncState::Error(const SQChar *err)
@@ -124,7 +127,7 @@ void SQFuncState::Dump(SQFunctionProto *func)
     scprintf(_SC("-----LITERALS\n"));
     SQObjectPtr refidx,key,val;
     SQInteger idx;
-    SQObjectPtrVec templiterals;
+    sqvector<SQObjectPtr> templiterals;
     templiterals.resize(_nliterals);
     while((idx=_table(_literals)->Next(false,refidx,key,val))!=-1) {
         refidx=idx;
@@ -591,7 +594,7 @@ SQObject SQFuncState::CreateTable()
 
 SQFunctionProto *SQFuncState::BuildProto() {
     SQFunctionProto * f = SQFunctionProto::Create(
-        _ss,
+        _sharedstate,
         _instructions.size(),
         _nliterals,
         _parameters.size(),

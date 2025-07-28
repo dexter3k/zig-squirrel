@@ -82,8 +82,6 @@ enum SQMetaMethod{
     } \
 }
 
-#define MINPOWER2 4
-
 struct SQRefCounted {
     SQUnsignedInteger _uiRef;
     struct SQWeakRef *_weakref;
@@ -117,20 +115,18 @@ struct SQWeakRef : SQRefCounted {
 
 struct SQObjectPtr;
 
-#define __AddRef(type,unval) if(ISREFCOUNTED(type)) \
-        { \
-            unval.pRefCounted->_uiRef++; \
+static inline void __Release(SQObjectType type, SQObjectValue unval) {
+    if (ISREFCOUNTED(type)) {
+        unval.pRefCounted->_uiRef--;
+        if (unval.pRefCounted->_uiRef == 0) {
+            unval.pRefCounted->Release();
         }
-
-#define __Release(type,unval) if(ISREFCOUNTED(type) && ((--unval.pRefCounted->_uiRef)==0))  \
-        {   \
-            unval.pRefCounted->Release();   \
-        }
+    }
+}
 
 static inline void __ObjRelease(SQRefCounted * rc) {
     if (rc) {
         rc->_uiRef--;
-
         if (rc->_uiRef == 0) {
             rc->Release();
         }
@@ -208,24 +204,18 @@ static inline void __ObjAddRef(SQRefCounted * rc) {
         _unVal.sym = x; \
         return *this; \
     }
+
 struct SQObjectPtr : public SQObject {
-    SQObjectPtr() {
-        _type = OT_NULL;
-        _unVal.raw = 0;
-    }
+    SQObjectPtr() { _type = OT_NULL; _unVal.raw = 0; }
 
     SQObjectPtr(SQObjectPtr const & o) {
-        _type = o._type;
-        _unVal = o._unVal;
-
-        __AddRef(_type, _unVal);
+        _type = o._type; _unVal = o._unVal;
+        if (ISREFCOUNTED(_type)) { _unVal.pRefCounted->_uiRef++; }
     }
 
-    SQObjectPtr(const SQObject &o) {
-        _type = o._type;
-        _unVal = o._unVal;
-
-        __AddRef(_type, _unVal);
+    SQObjectPtr(SQObject const & o) {
+        _type = o._type; _unVal = o._unVal;
+        if (ISREFCOUNTED(_type)) { _unVal.pRefCounted->_uiRef++; }
     }
 
     _REF_TYPE_DECL(OT_TABLE,SQTable,pTable)
@@ -253,18 +243,38 @@ struct SQObjectPtr : public SQObject {
         _unVal.nInteger = bBool?1:0;
     }
 
-    inline SQObjectPtr& operator=(bool b) {
-        __Release(_type,_unVal);
+    ~SQObjectPtr() {
+        if (ISREFCOUNTED(_type)) {
+            _unVal.pRefCounted->_uiRef--;
+            if (_unVal.pRefCounted->_uiRef == 0) {
+                _unVal.pRefCounted->Release();
+            }
+        }
+    }
+
+    inline void Null() {
+        if (ISREFCOUNTED(_type)) {
+            _unVal.pRefCounted->_uiRef--;
+            if (_unVal.pRefCounted->_uiRef == 0) {
+                _unVal.pRefCounted->Release();
+            }
+        }
+        _type = OT_NULL;
         _unVal.raw = 0;
+    }
+
+    inline SQObjectPtr & operator=(bool b) {
+        if (ISREFCOUNTED(_type)) {
+            _unVal.pRefCounted->_uiRef--;
+            if (_unVal.pRefCounted->_uiRef == 0) {
+                _unVal.pRefCounted->Release();
+            }
+        }
 
         _type = OT_BOOL;
         _unVal.nInteger = b?1:0;
-        return *this;
-    }
 
-    ~SQObjectPtr()
-    {
-        __Release(_type,_unVal);
+        return *this;
     }
 
     inline SQObjectPtr& operator=(const SQObjectPtr& obj)
@@ -275,10 +285,18 @@ struct SQObjectPtr : public SQObject {
         unOldVal=_unVal;
         _unVal = obj._unVal;
         _type = obj._type;
-        __AddRef(_type,_unVal);
-        __Release(tOldType,unOldVal);
+        if (ISREFCOUNTED(_type)) {
+            _unVal.pRefCounted->_uiRef++;
+        }
+        if (ISREFCOUNTED(tOldType)) {
+            unOldVal.pRefCounted->_uiRef--;
+            if (unOldVal.pRefCounted->_uiRef == 0) {
+                unOldVal.pRefCounted->Release();
+            }
+        }
         return *this;
     }
+
     inline SQObjectPtr& operator=(const SQObject& obj)
     {
         SQObjectType tOldType;
@@ -287,19 +305,20 @@ struct SQObjectPtr : public SQObject {
         unOldVal=_unVal;
         _unVal = obj._unVal;
         _type = obj._type;
-        __AddRef(_type,_unVal);
-        __Release(tOldType,unOldVal);
+        if (ISREFCOUNTED(_type)) {
+            _unVal.pRefCounted->_uiRef++;
+        }
+        if (ISREFCOUNTED(tOldType)) {
+            unOldVal.pRefCounted->_uiRef--;
+            if (unOldVal.pRefCounted->_uiRef == 0) {
+                unOldVal.pRefCounted->Release();
+            }
+        }
         return *this;
     }
 
-    inline void Null() {
-        if (ISREFCOUNTED(_type)) __ObjRelease(_unVal.pRefCounted);
-        _type = OT_NULL;
-        _unVal.raw = 0;
-    }
-
     private:
-        SQObjectPtr(const SQChar *){} //safety
+        SQObjectPtr(const SQChar *) = delete;
 };
 
 
@@ -349,8 +368,6 @@ struct SQDelegable : public CHAINABLE_OBJ {
 };
 
 SQUnsignedInteger TranslateIndex(const SQObjectPtr &idx);
-typedef sqvector<SQObjectPtr> SQObjectPtrVec;
-typedef sqvector<SQInteger> SQIntVec;
 const SQChar *GetTypeName(const SQObjectPtr &obj1);
 const SQChar *IdType2Name(SQObjectType type);
 
