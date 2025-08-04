@@ -16,6 +16,7 @@ extern void strbuf_init(Strbuf * buf);
 extern void strbuf_deinit(Strbuf * buf);
 extern void strbuf_reset(Strbuf * buf);
 extern void strbuf_push_back(Strbuf * buf, uint8_t value);
+extern void strbuf_push_back_utf8(Strbuf * buf, uint32_t value);
 
 #ifdef __cplusplus
 } // extern "C"

@@ -78,7 +78,7 @@ extern "C" {
 #define TK_CONST 324
 #define TK_RAWCALL 325
 
-extern char const * token_to_string(uint16_t token);
+extern char const * lexer_token_to_string(uint16_t token);
 
 typedef struct {
     uint16_t token;
@@ -87,8 +87,8 @@ typedef struct {
     uint32_t current_column;
     uint32_t last_token_line;
 
-    SQUnsignedInteger uint_value;
-    SQFloat float_value;
+    uint64_t uint_value;
+    double float_value;
     char const * string_value;
     Strbuf string_buffer; // replace with length value?
 } LexerState;
@@ -101,7 +101,7 @@ typedef struct {
     SQLEXREADFUNC reader_func;
     void * reader_context;
     CompilerErrorFunc error_func;
-    void *error_context;
+    void * error_context;
 
     uint16_t _curtoken;
     bool _reached_eof;

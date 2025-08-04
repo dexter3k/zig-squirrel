@@ -254,7 +254,7 @@ SQInteger _read_two_bytes(IOBuffer *iobuffer)
     return 0;
 }
 
-static SQInteger _io_file_lexfeed_PLAIN(SQUserPointer iobuf)
+static uint8_t _io_file_lexfeed_PLAIN(SQUserPointer iobuf)
 {
     IOBuffer *iobuffer = (IOBuffer *)iobuf;
     return _read_byte(iobuffer);
@@ -301,26 +301,6 @@ static SQInteger _io_file_lexfeed_UTF8(SQUserPointer iobuf)
 }
 #endif
 
-static SQInteger _io_file_lexfeed_UCS2_LE(SQUserPointer iobuf)
-{
-    SQInteger ret;
-    IOBuffer *iobuffer = (IOBuffer *)iobuf;
-    if( (ret = _read_two_bytes(iobuffer)) > 0 )
-        return ret;
-    return 0;
-}
-
-static SQInteger _io_file_lexfeed_UCS2_BE(SQUserPointer iobuf)
-{
-    SQInteger c;
-    IOBuffer *iobuffer = (IOBuffer *)iobuf;
-    if( (c = _read_two_bytes(iobuffer)) > 0 ) {
-        c = ((c>>8)&0x00FF)| ((c<<8)&0xFF00);
-        return c;
-    }
-    return 0;
-}
-
 SQInteger file_read(SQUserPointer file,SQUserPointer buf,SQInteger size)
 {
     SQInteger ret;
@@ -359,8 +339,6 @@ SQRESULT sqstd_loadfile(HSQUIRRELVM v,const SQChar *filename,SQBool printerror)
             switch(us)
             {
                 //gotta swap the next 2 lines on BIG endian machines
-                case 0xFFFE: func = _io_file_lexfeed_UCS2_BE; break;//UTF-16 little endian;
-                case 0xFEFF: func = _io_file_lexfeed_UCS2_LE; break;//UTF-16 big endian;
                 case 0xBBEF:
                     if(sqstd_fread(&uc,1,sizeof(uc),file) == 0) {
                         sqstd_fclose(file);
@@ -370,11 +348,7 @@ SQRESULT sqstd_loadfile(HSQUIRRELVM v,const SQChar *filename,SQBool printerror)
                         sqstd_fclose(file);
                         return sq_throwerror(v,_SC("Unrecognized encoding"));
                     }
-#ifdef SQUNICODE
-                    func = _io_file_lexfeed_UTF8;
-#else
                     func = _io_file_lexfeed_PLAIN;
-#endif
                     break;//UTF-8 ;
                 default: sqstd_fseek(file,0,SQ_SEEK_SET); break; // ascii
             }

@@ -176,7 +176,7 @@ typedef void (*SQDEBUGHOOK)(HSQUIRRELVM /*v*/, SQInteger /*type*/, const SQChar 
 typedef SQInteger (*SQWRITEFUNC)(SQUserPointer,SQUserPointer,SQInteger);
 typedef SQInteger (*SQREADFUNC)(SQUserPointer,SQUserPointer,SQInteger);
 
-typedef SQInteger (*SQLEXREADFUNC)(SQUserPointer);
+typedef uint8_t (*SQLEXREADFUNC)(SQUserPointer);
 
 typedef struct tagSQRegFunction{
     const SQChar *name;

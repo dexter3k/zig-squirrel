@@ -153,7 +153,7 @@ public:
                         etypename = "FLOAT";
                         break;
                     default:
-                        etypename = token_to_string(tok);
+                        etypename = lexer_token_to_string(tok);
                     }
                     Error(_SC("expected '%s'"), etypename);
                 }
@@ -174,7 +174,7 @@ public:
             ret = SQObjectPtr(SQInteger(lexer_state->uint_value));
             break;
         case TK_FLOAT:
-            ret = SQObjectPtr(lexer_state->float_value);
+            ret = SQObjectPtr(SQFloat(lexer_state->float_value));
             break;
         }
         Lex();
@@ -244,8 +244,15 @@ public:
         }
         else {
             if(_raiseerror && _ss(_vm)->_compilererrorhandler) {
-                _ss(_vm)->_compilererrorhandler(_vm, _compilererror, sq_type(_sourcename) == OT_STRING?_stringval(_sourcename):_SC("unknown"),
-                    lexer_state->current_line, lexer_state->current_column);
+                _ss(_vm)->_compilererrorhandler(
+                    _vm,
+                    _compilererror,
+                    sq_type(_sourcename) == OT_STRING
+                        ? _stringval(_sourcename)
+                        : "unknown",
+                    lexer.state.current_line,
+                    lexer.state.current_column
+                );
             }
             _vm->_lasterror = SQString::Create(_ss(_vm), _compilererror, -1);
             return false;

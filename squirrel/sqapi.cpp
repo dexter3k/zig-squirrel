@@ -1588,7 +1588,7 @@ struct BufState{
     SQInteger size;
 };
 
-SQInteger buf_lexfeed(SQUserPointer file)
+uint8_t buf_lexfeed(SQUserPointer file)
 {
     BufState *buf=(BufState*)file;
     if(buf->size<(buf->ptr+1))
