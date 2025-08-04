@@ -1,16 +1,11 @@
-/*  see copyright notice in squirrel.h */
-#ifndef _SQUTILS_H_
-#define _SQUTILS_H_
+#pragma once
 
 void *sq_vm_malloc(SQUnsignedInteger size);
 void *sq_vm_realloc(void *p,SQUnsignedInteger oldsize,SQUnsignedInteger size);
 void sq_vm_free(void *p,SQUnsignedInteger size);
 
-#define sq_new(__ptr,__type) {__ptr=(__type *)sq_vm_malloc(sizeof(__type));new (__ptr) __type;}
-#define sq_delete(__ptr,__type) {__ptr->~__type();sq_vm_free(__ptr,sizeof(__type));}
 #define sq_aligning(v) (((size_t)(v) + (SQ_ALIGNMENT-1)) & (~(SQ_ALIGNMENT-1)))
 
-//sqvector mini vector class, supports objects by value
 template<typename T>
 class sqvector {
     SQUnsignedInteger len;
@@ -94,46 +89,55 @@ public:
         return len <= 0;
     }
 
-    inline T &push_back(const T& val = T())
-    {
-        if(cap <= len)
+    inline T & push_back(const T& val = T()) {
+        if(cap <= len) {
             _realloc(len * 2);
+        }
         return *(new ((void *)&_vals[len++]) T(val));
     }
-    inline void pop_back()
-    {
-        len--; _vals[len].~T();
+
+    inline void pop_back() {
+        len--;
+        _vals[len].~T();
     }
 
-    void insert(SQUnsignedInteger idx, const T& val)
-    {
+    void insert(SQUnsignedInteger idx, const T& val) {
         resize(len + 1);
+
         for(SQUnsignedInteger i = len - 1; i > idx; i--) {
             _vals[i] = _vals[i - 1];
         }
+
         _vals[idx] = val;
     }
 
-    void remove(SQUnsignedInteger idx)
-    {
+    void remove(SQUnsignedInteger idx) {
         _vals[idx].~T();
+
         if(idx < (len - 1)) {
             memmove((void*)&_vals[idx], &_vals[idx+1], sizeof(T) * (len - idx - 1));
         }
+
         len--;
     }
 
-    SQUnsignedInteger capacity() { return cap; }
+    SQUnsignedInteger capacity() {
+        return cap;
+    }
 
-    inline T &back() const { return _vals[len - 1]; }
-    inline T& operator[](SQUnsignedInteger pos) const{ return _vals[pos]; }
+    inline T & back() const {
+        return _vals[len - 1];
+    }
+
+    inline T & operator[](SQUnsignedInteger pos) const {
+        return _vals[pos];
+    }
 private:
-    void _realloc(SQUnsignedInteger newsize)
-    {
-        newsize = (newsize > 0)?newsize:4;
+    void _realloc(SQUnsignedInteger newsize) {
+        newsize = (newsize > 0)
+            ? newsize
+            : 4;
         _vals = (T*)sq_vm_realloc(_vals, cap * sizeof(T), newsize * sizeof(T));
         cap = newsize;
     }
 };
-
-#endif //_SQUTILS_H_

@@ -148,9 +148,12 @@ public:
     void Kill(){
         _state=eDead;
         _stack.resize(0);
-        _closure.Null();}
+        _closure.Null();
+    }
+
     void Release(){
-        sq_delete(this,SQGenerator);
+        this->~SQGenerator();
+        sq_vm_free(this, sizeof(*this));
     }
 
     bool Yield(SQVM *v,SQInteger target);

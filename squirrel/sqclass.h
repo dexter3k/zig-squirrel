@@ -61,10 +61,15 @@ public:
     bool SetAttributes(const SQObjectPtr &key,const SQObjectPtr &val);
     bool GetAttributes(const SQObjectPtr &key,SQObjectPtr &outval);
     void Lock() { _locked = true; if(_base) _base->Lock(); }
+
     void Release() {
-        if (_hook) { _hook(_typetag,0);}
-        sq_delete(this, SQClass);
+        if (_hook) {
+            _hook(_typetag,0);
+        }
+        this->~SQClass();
+        sq_vm_free(this, sizeof(*this));
     }
+
     void Finalize();
 #ifndef NO_GARBAGE_COLLECTOR
     void Mark(SQCollectable ** );

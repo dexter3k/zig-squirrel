@@ -85,10 +85,13 @@ SQUnsignedInteger TranslateIndex(const SQObjectPtr &idx)
 SQWeakRef *SQRefCounted::GetWeakRef(SQObjectType type)
 {
     if(!_weakref) {
-        sq_new(_weakref,SQWeakRef);
+        _weakref = (SQWeakRef *)sq_vm_malloc(sizeof(SQWeakRef));
+        new (_weakref) SQWeakRef;
+
 #if defined(SQUSEDOUBLE) && !defined(_SQ64)
         _weakref->_obj._unVal.raw = 0; //clean the whole union on 32 bits with double
 #endif
+
         _weakref->_obj._type = type;
         _weakref->_obj._unVal.pRefCounted = this;
     }

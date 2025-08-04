@@ -50,7 +50,8 @@ HSQUIRRELVM sq_open(SQInteger initialstacksize) {
     if(v->Init(NULL, initialstacksize)) {
         return v;
     } else {
-        sq_delete(v, SQVM);
+        v->~SQVM();
+        sq_vm_free(v, sizeof(SQVM));
         return NULL;
     }
     return v;
@@ -69,7 +70,8 @@ HSQUIRRELVM sq_newthread(HSQUIRRELVM friendvm, SQInteger initialstacksize)
         friendvm->Push(v);
         return v;
     } else {
-        sq_delete(v, SQVM);
+        v->~SQVM();
+        sq_vm_free(v, sizeof(SQVM));
         return NULL;
     }
 }
@@ -115,7 +117,8 @@ void sq_close(HSQUIRRELVM v)
 {
     SQSharedState *ss = _ss(v);
     _thread(ss->_root_vm)->Finalize();
-    sq_delete(ss, SQSharedState);
+    ss->~SQSharedState();
+    sq_vm_free(ss, sizeof(SQSharedState));
 }
 
 SQInteger sq_getversion()

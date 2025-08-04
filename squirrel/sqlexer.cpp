@@ -1,259 +1,13 @@
-#include "sqpcheader.h"
 #include <ctype.h>
 #include <stdlib.h>
+#include <string.h>
+#include <assert.h>
 
-#include "sqtable.h"
-#include "sqstring.h"
-#include "sqcompiler.h"
+#include <squirrel.h>
+
 #include "sqlexer.h"
 
-#define RETURN_TOKEN(t) { _prevtoken = _curtoken; _curtoken = t; return t;}
-#define INIT_TEMP_STRING() { _longstr.resize(0);}
-#define APPEND_CHAR(c) { _longstr.push_back(c);}
-
-void SQLexer::Error(SQChar const * err) {
-    _errfunc(_errtarget,err);
-}
-
-void SQLexer::Next() {
-    SQInteger t = _readf(_up);
-    if (t > MAX_CHAR) {
-        Error("Invalid character");
-    }
-
-    _currentcolumn++;
-
-    if (t == 0) {
-        _currdata = SQUIRREL_EOB;
-        _reached_eof = SQTrue;
-        return;
-    }
-
-    _currdata = LexChar(t);
-}
-
-const SQChar * SQLexer::Tok2Str(SQInteger tok) {
-    switch (tok) {
-        case TK_WHILE: return "while";
-        case TK_DO: return "do";
-        case TK_IF: return "if";
-        case TK_ELSE: return "else";
-        case TK_BREAK: return "break";
-        case TK_CONTINUE: return "continue";
-        case TK_RETURN: return "return";
-        case TK_NULL: return "null";
-        case TK_FUNCTION: return "function";
-        case TK_LOCAL: return "local";
-        case TK_FOR: return "for";
-        case TK_FOREACH: return "foreach";
-        case TK_IN: return "in";
-        case TK_TYPEOF: return "typeof";
-        case TK_BASE: return "base";
-        case TK_DELETE: return "delete";
-        case TK_TRY: return "try";
-        case TK_CATCH: return "catch";
-        case TK_THROW: return "throw";
-        case TK_CLONE: return "clone";
-        case TK_YIELD: return "yield";
-        case TK_RESUME: return "resume";
-        case TK_SWITCH: return "switch";
-        case TK_CASE: return "case";
-        case TK_DEFAULT: return "default";
-        case TK_THIS: return "this";
-        case TK_CLASS: return "class";
-        case TK_EXTENDS: return "extends";
-        case TK_CONSTRUCTOR: return "constructor";
-        case TK_INSTANCEOF: return "instanceof";
-        case TK_TRUE: return "true";
-        case TK_FALSE: return "false";
-        case TK_STATIC: return "static";
-        case TK_ENUM: return "enum";
-        case TK_CONST: return "const";
-        case TK___LINE__: return "__LINE__";
-        case TK___FILE__: return "__FILE__";
-        case TK_RAWCALL: return "rawcall";
-        default:
-            return nullptr;
-    }
-}
-
-void SQLexer::LexBlockComment()
-{
-    bool done = false;
-    while(!done) {
-        switch(_currdata) {
-            case _SC('*'): { Next(); if(_currdata == _SC('/')) { done = true; Next(); }}; continue;
-            case _SC('\n'): _currentline++; Next(); continue;
-            case SQUIRREL_EOB: Error(_SC("missing \"*/\" in comment"));
-            default: Next();
-        }
-    }
-}
-void SQLexer::LexLineComment() {
-    do {
-        Next();
-    } while (_currdata != '\n' && _currdata > SQUIRREL_EOB);
-}
-
-SQInteger SQLexer::Lex() {
-    _lasttokenline = _currentline;
-    while(_currdata != SQUIRREL_EOB) {
-        switch(_currdata){
-        case '\t':
-        case '\r':
-        case ' ':
-            Next();
-            continue;
-        case '\n':
-            _currentline++;
-            _prevtoken=_curtoken;
-            _curtoken=_SC('\n');
-            Next();
-            _currentcolumn=1;
-            continue;
-        case _SC('#'): LexLineComment(); continue;
-        case _SC('/'):
-            Next();
-            switch(_currdata){
-            case _SC('*'):
-                Next();
-                LexBlockComment();
-                continue;
-            case _SC('/'):
-                LexLineComment();
-                continue;
-            case _SC('='):
-                Next();
-                RETURN_TOKEN(TK_DIVEQ);
-                continue;
-            case _SC('>'):
-                Next();
-                RETURN_TOKEN(TK_ATTR_CLOSE);
-                continue;
-            default:
-                RETURN_TOKEN('/');
-            }
-        case _SC('='):
-            Next();
-            if (_currdata != _SC('=')){ RETURN_TOKEN('=') }
-            else { Next(); RETURN_TOKEN(TK_EQ); }
-        case _SC('<'):
-            Next();
-            switch(_currdata) {
-            case _SC('='):
-                Next();
-                if(_currdata == _SC('>')) {
-                    Next();
-                    RETURN_TOKEN(TK_3WAYSCMP);
-                }
-                RETURN_TOKEN(TK_LE)
-                break;
-            case _SC('-'): Next(); RETURN_TOKEN(TK_NEWSLOT); break;
-            case _SC('<'): Next(); RETURN_TOKEN(TK_SHIFTL); break;
-            case _SC('/'): Next(); RETURN_TOKEN(TK_ATTR_OPEN); break;
-            }
-            RETURN_TOKEN('<');
-        case _SC('>'):
-            Next();
-            if (_currdata == _SC('=')){ Next(); RETURN_TOKEN(TK_GE);}
-            else if(_currdata == _SC('>')){
-                Next();
-                if(_currdata == _SC('>')){
-                    Next();
-                    RETURN_TOKEN(TK_USHIFTR);
-                }
-                RETURN_TOKEN(TK_SHIFTR);
-            }
-            else { RETURN_TOKEN('>') }
-        case _SC('!'):
-            Next();
-            if (_currdata != _SC('=')){ RETURN_TOKEN('!')}
-            else { Next(); RETURN_TOKEN(TK_NE); }
-        case _SC('@'): {
-            SQInteger stype;
-            Next();
-            if(_currdata != _SC('"')) {
-                RETURN_TOKEN('@');
-            }
-            if((stype=ReadString('"',true))!=-1) {
-                RETURN_TOKEN(stype);
-            }
-            Error(_SC("error parsing the string"));
-                       }
-        case _SC('"'):
-        case _SC('\''): {
-            SQInteger stype;
-            if((stype=ReadString(_currdata,false))!=-1){
-                RETURN_TOKEN(stype);
-            }
-            Error(_SC("error parsing the string"));
-            }
-        case _SC('{'): case _SC('}'): case _SC('('): case _SC(')'): case _SC('['): case _SC(']'):
-        case _SC(';'): case _SC(','): case _SC('?'): case _SC('^'): case _SC('~'):
-            {SQInteger ret = _currdata;
-            Next(); RETURN_TOKEN(ret); }
-        case _SC('.'):
-            Next();
-            if (_currdata != _SC('.')){ RETURN_TOKEN('.') }
-            Next();
-            if (_currdata != _SC('.')){ Error(_SC("invalid token '..'")); }
-            Next();
-            RETURN_TOKEN(TK_VARPARAMS);
-        case _SC('&'):
-            Next();
-            if (_currdata != _SC('&')){ RETURN_TOKEN('&') }
-            else { Next(); RETURN_TOKEN(TK_AND); }
-        case _SC('|'):
-            Next();
-            if (_currdata != _SC('|')){ RETURN_TOKEN('|') }
-            else { Next(); RETURN_TOKEN(TK_OR); }
-        case _SC(':'):
-            Next();
-            if (_currdata != _SC(':')){ RETURN_TOKEN(':') }
-            else { Next(); RETURN_TOKEN(TK_DOUBLE_COLON); }
-        case _SC('*'):
-            Next();
-            if (_currdata == _SC('=')){ Next(); RETURN_TOKEN(TK_MULEQ);}
-            else RETURN_TOKEN('*');
-        case _SC('%'):
-            Next();
-            if (_currdata == _SC('=')){ Next(); RETURN_TOKEN(TK_MODEQ);}
-            else RETURN_TOKEN('%');
-        case _SC('-'):
-            Next();
-            if (_currdata == _SC('=')){ Next(); RETURN_TOKEN(TK_MINUSEQ);}
-            else if  (_currdata == _SC('-')){ Next(); RETURN_TOKEN(TK_MINUSMINUS);}
-            else RETURN_TOKEN('-');
-        case _SC('+'):
-            Next();
-            if (_currdata == _SC('=')){ Next(); RETURN_TOKEN(TK_PLUSEQ);}
-            else if (_currdata == _SC('+')){ Next(); RETURN_TOKEN(TK_PLUSPLUS);}
-            else RETURN_TOKEN('+');
-        case SQUIRREL_EOB:
-            return 0;
-        default:{
-                if (scisdigit(_currdata)) {
-                    SQInteger ret = ReadNumber();
-                    RETURN_TOKEN(ret);
-                }
-                else if (scisalpha(_currdata) || _currdata == _SC('_')) {
-                    SQInteger t = ReadID();
-                    RETURN_TOKEN(t);
-                }
-                else {
-                    SQInteger c = _currdata;
-                    if (sciscntrl((int)c)) Error(_SC("unexpected character(control)"));
-                    Next();
-                    RETURN_TOKEN(c);
-                }
-                RETURN_TOKEN(0);
-            }
-        }
-    }
-    return 0;
-}
-
-SQInteger SQLexer::GetIDType(SQChar const * s, SQInteger len) {
+SQInteger lexer_get_id_type(char const * s, SQInteger len) {
     switch (len) {
     case 2:
         if (0 == strcmp(s, "do")) return TK_DO;
@@ -318,159 +72,151 @@ SQInteger SQLexer::GetIDType(SQChar const * s, SQInteger len) {
     return TK_IDENTIFIER;
 }
 
-#ifdef SQUNICODE
-#if WCHAR_SIZE == 2
-SQInteger SQLexer::AddUTF16(SQUnsignedInteger ch)
-{
-    if (ch >= 0x10000)
-    {
-        SQUnsignedInteger code = (ch - 0x10000);
-        APPEND_CHAR((SQChar)(0xD800 | (code >> 10)));
-        APPEND_CHAR((SQChar)(0xDC00 | (code & 0x3FF)));
-        return 2;
-    }
-    else {
-        APPEND_CHAR((SQChar)ch);
-        return 1;
-    }
+void lexer_error(SQLexer * lexer, char const * err) {
+    lexer->error_func(lexer->error_context, err);
 }
-#endif
-#else
-SQInteger SQLexer::AddUTF8(SQUnsignedInteger ch)
-{
-    if (ch < 0x80) {
-        APPEND_CHAR((char)ch);
-        return 1;
-    }
-    if (ch < 0x800) {
-        APPEND_CHAR((SQChar)((ch >> 6) | 0xC0));
-        APPEND_CHAR((SQChar)((ch & 0x3F) | 0x80));
-        return 2;
-    }
-    if (ch < 0x10000) {
-        APPEND_CHAR((SQChar)((ch >> 12) | 0xE0));
-        APPEND_CHAR((SQChar)(((ch >> 6) & 0x3F) | 0x80));
-        APPEND_CHAR((SQChar)((ch & 0x3F) | 0x80));
-        return 3;
-    }
-    if (ch < 0x110000) {
-        APPEND_CHAR((SQChar)((ch >> 18) | 0xF0));
-        APPEND_CHAR((SQChar)(((ch >> 12) & 0x3F) | 0x80));
-        APPEND_CHAR((SQChar)(((ch >> 6) & 0x3F) | 0x80));
-        APPEND_CHAR((SQChar)((ch & 0x3F) | 0x80));
-        return 4;
-    }
-    return 0;
-}
-#endif
 
-SQInteger SQLexer::ProcessStringHexEscape(SQChar *dest, SQInteger maxdigits)
-{
-    Next();
-    if (!isxdigit(_currdata)) Error(_SC("hexadecimal number expected"));
+void lexer_next(SQLexer * lexer) {
+    SQInteger t = lexer->reader_func(lexer->reader_context);
+    if (t > MAX_CHAR) {
+        lexer_error(lexer, "Invalid character");
+    }
+
+    lexer->state.current_column++;
+
+    if (t == 0) {
+        lexer->_currdata = SQUIRREL_EOB;
+        lexer->_reached_eof = SQTrue;
+        return;
+    }
+
+    lexer->_currdata = t;
+}
+
+void lexer_add_utf8(SQLexer * lexer, uint32_t ch) {
+    if (ch < 0x80) {
+        strbuf_push_back(&lexer->state.string_buffer, char(ch));
+    } else if (ch < 0x800) {
+        strbuf_push_back(&lexer->state.string_buffer, (SQChar)((ch >> 6) | 0xC0));
+        strbuf_push_back(&lexer->state.string_buffer, (SQChar)((ch & 0x3F) | 0x80));
+    } else if (ch < 0x10000) {
+        strbuf_push_back(&lexer->state.string_buffer, (SQChar)((ch >> 12) | 0xE0));
+        strbuf_push_back(&lexer->state.string_buffer, (SQChar)(((ch >> 6) & 0x3F) | 0x80));
+        strbuf_push_back(&lexer->state.string_buffer, (SQChar)((ch & 0x3F) | 0x80));
+    } else if (ch < 0x110000) {
+        strbuf_push_back(&lexer->state.string_buffer, (SQChar)((ch >> 18) | 0xF0));
+        strbuf_push_back(&lexer->state.string_buffer, (SQChar)(((ch >> 12) & 0x3F) | 0x80));
+        strbuf_push_back(&lexer->state.string_buffer, (SQChar)(((ch >> 6) & 0x3F) | 0x80));
+        strbuf_push_back(&lexer->state.string_buffer, (SQChar)((ch & 0x3F) | 0x80));
+    }
+}
+
+void lexer_process_string_hex_escape(SQLexer * lexer, char * dest, SQInteger maxdigits) {
+    lexer_next(lexer);
+
+    if (!isxdigit(lexer->_currdata)) {
+        lexer_error(lexer, "hexadecimal number expected");
+        // noreturn
+    }
+
     SQInteger n = 0;
-    while (isxdigit(_currdata) && n < maxdigits) {
-        dest[n] = _currdata;
+    while (isxdigit(lexer->_currdata) && n < maxdigits) {
+        dest[n] = lexer->_currdata;
         n++;
-        Next();
+        lexer_next(lexer);
     }
     dest[n] = 0;
-    return n;
 }
 
-SQInteger SQLexer::ReadString(SQInteger ndelim,bool verbatim)
-{
-    INIT_TEMP_STRING();
-    Next();
+SQInteger lexer_read_string(SQLexer * lexer, SQInteger ndelim, bool verbatim) {
+    strbuf_reset(&lexer->state.string_buffer);
+    lexer_next(lexer);
 
-    if (_currdata <= SQUIRREL_EOB) {
+    if (lexer->_currdata <= SQUIRREL_EOB) {
         return -1;
     }
 
     for(;;) {
-        while(_currdata != ndelim) {
-            SQInteger x = _currdata;
+        while(lexer->_currdata != ndelim) {
+            SQInteger x = lexer->_currdata;
             switch (x) {
             case SQUIRREL_EOB:
-                Error(_SC("unfinished string"));
+                lexer_error(lexer, "unfinished string");
+                // noreturn
                 return -1;
-            case _SC('\n'):
-                if(!verbatim) Error(_SC("newline in a constant"));
-                APPEND_CHAR(_currdata); Next();
-                _currentline++;
+            case '\n':
+                if(!verbatim) {
+                    lexer_error(lexer, "newline in a constant");
+                    // noreturn
+                }
+                strbuf_push_back(&lexer->state.string_buffer, lexer->_currdata);
+                lexer_next(lexer);
+                lexer->state.current_line++;
                 break;
-            case _SC('\\'):
+            case '\\':
                 if(verbatim) {
-                    APPEND_CHAR('\\'); Next();
+                    strbuf_push_back(&lexer->state.string_buffer, '\\');
+                    lexer_next(lexer);
                 }
                 else {
-                    Next();
-                    switch(_currdata) {
+                    lexer_next(lexer);
+                    switch(lexer->_currdata) {
                     case _SC('x'):  {
                         const SQInteger maxdigits = sizeof(SQChar) * 2;
                         SQChar temp[maxdigits + 1];
-                        ProcessStringHexEscape(temp, maxdigits);
-                        SQChar *stemp;
-                        APPEND_CHAR((SQChar)scstrtoul(temp, &stemp, 16));
+                        lexer_process_string_hex_escape(lexer, temp, maxdigits);
+                        strbuf_push_back(&lexer->state.string_buffer, (SQChar)strtoul(temp, nullptr, 16));
                     }
                     break;
                     case _SC('U'):
                     case _SC('u'):  {
-                        const SQInteger maxdigits = _currdata == 'u' ? 4 : 8;
+                        const SQInteger maxdigits = lexer->_currdata == 'u' ? 4 : 8;
                         SQChar temp[8 + 1];
-                        ProcessStringHexEscape(temp, maxdigits);
-                        SQChar *stemp;
-#ifdef SQUNICODE
-#if WCHAR_SIZE == 2
-                        AddUTF16(scstrtoul(temp, &stemp, 16));
-#else
-                        APPEND_CHAR((SQChar)scstrtoul(temp, &stemp, 16));
-#endif
-#else
-                        AddUTF8(scstrtoul(temp, &stemp, 16));
-#endif
+                        lexer_process_string_hex_escape(lexer, temp, maxdigits);
+                        lexer_add_utf8(lexer, strtoul(temp, nullptr, 16));
                     }
                     break;
-                    case _SC('t'): APPEND_CHAR(_SC('\t')); Next(); break;
-                    case _SC('a'): APPEND_CHAR(_SC('\a')); Next(); break;
-                    case _SC('b'): APPEND_CHAR(_SC('\b')); Next(); break;
-                    case _SC('n'): APPEND_CHAR(_SC('\n')); Next(); break;
-                    case _SC('r'): APPEND_CHAR(_SC('\r')); Next(); break;
-                    case _SC('v'): APPEND_CHAR(_SC('\v')); Next(); break;
-                    case _SC('f'): APPEND_CHAR(_SC('\f')); Next(); break;
-                    case _SC('0'): APPEND_CHAR(_SC('\0')); Next(); break;
-                    case _SC('\\'): APPEND_CHAR(_SC('\\')); Next(); break;
-                    case _SC('"'): APPEND_CHAR(_SC('"')); Next(); break;
-                    case _SC('\''): APPEND_CHAR(_SC('\'')); Next(); break;
+                    case _SC('t'): strbuf_push_back(&lexer->state.string_buffer, _SC('\t')); lexer_next(lexer); break;
+                    case _SC('a'): strbuf_push_back(&lexer->state.string_buffer, _SC('\a')); lexer_next(lexer); break;
+                    case _SC('b'): strbuf_push_back(&lexer->state.string_buffer, _SC('\b')); lexer_next(lexer); break;
+                    case _SC('n'): strbuf_push_back(&lexer->state.string_buffer, _SC('\n')); lexer_next(lexer); break;
+                    case _SC('r'): strbuf_push_back(&lexer->state.string_buffer, _SC('\r')); lexer_next(lexer); break;
+                    case _SC('v'): strbuf_push_back(&lexer->state.string_buffer, _SC('\v')); lexer_next(lexer); break;
+                    case _SC('f'): strbuf_push_back(&lexer->state.string_buffer, _SC('\f')); lexer_next(lexer); break;
+                    case _SC('0'): strbuf_push_back(&lexer->state.string_buffer, _SC('\0')); lexer_next(lexer); break;
+                    case _SC('\\'): strbuf_push_back(&lexer->state.string_buffer, _SC('\\')); lexer_next(lexer); break;
+                    case _SC('"'): strbuf_push_back(&lexer->state.string_buffer, _SC('"')); lexer_next(lexer); break;
+                    case _SC('\''): strbuf_push_back(&lexer->state.string_buffer, _SC('\'')); lexer_next(lexer); break;
                     default:
-                        Error(_SC("unrecognised escaper char"));
-                    break;
+                        lexer_error(lexer, _SC("unrecognised escaper char"));
+                        break;
                     }
                 }
                 break;
             default:
-                APPEND_CHAR(_currdata);
-                Next();
+                strbuf_push_back(&lexer->state.string_buffer, lexer->_currdata);
+                lexer_next(lexer);
+                break;
             }
         }
-        Next();
-        if(verbatim && _currdata == '"') { //double quotation
-            APPEND_CHAR(_currdata);
-            Next();
+        lexer_next(lexer);
+        if(verbatim && lexer->_currdata == '"') { //double quotation
+            strbuf_push_back(&lexer->state.string_buffer, lexer->_currdata);
+            lexer_next(lexer);
         }
         else {
             break;
         }
     }
-    _longstr.push_back('\0');
-    SQInteger len = _longstr.size()-1;
+    strbuf_push_back(&lexer->state.string_buffer, '\0');
+    SQInteger len = lexer->state.string_buffer.len-1;
     if(ndelim == _SC('\'')) {
-        if(len == 0) Error(_SC("empty constant"));
-        if(len > 1) Error(_SC("constant too long"));
-        _nvalue = SQUnsignedInteger(SQInteger(_longstr[0])); // sign-extend the value!
+        if(len == 0) lexer_error(lexer, _SC("empty constant"));
+        if(len > 1) lexer_error(lexer, _SC("constant too long"));
+        lexer->state.uint_value = SQUnsignedInteger(SQInteger(lexer->state.string_buffer.data[0])); // sign-extend the value!
         return TK_INTEGER;
     }
-    _svalue = &_longstr[0];
+    lexer->state.string_value = reinterpret_cast<char const *>(&lexer->state.string_buffer.data[0]);
     return TK_STRING_LITERAL;
 }
 
@@ -493,103 +239,339 @@ void LexInteger(SQChar const * s, SQUnsignedInteger * res) {
     }
 }
 
-SQInteger scisodigit(SQInteger c) { return c >= _SC('0') && c <= _SC('7'); }
+SQInteger scisodigit(SQInteger c) {
+    return c >= _SC('0') && c <= _SC('7');
+}
 
-void LexOctal(const SQChar *s,SQUnsignedInteger *res)
-{
+void LexOctal(const SQChar *s,SQUnsignedInteger *res) {
     *res = 0;
-    while(*s != 0)
-    {
+    while(*s != 0) {
         if(scisodigit(*s)) *res = (*res)*8+((*s++)-'0');
         else { assert(0); }
     }
 }
 
-SQInteger isexponent(SQInteger c) { return c == 'e' || c=='E'; }
-
+SQInteger isexponent(SQInteger c) {
+    return c == 'e' || c=='E';
+}
 
 #define MAX_HEX_DIGITS (sizeof(SQInteger)*2)
-SQInteger SQLexer::ReadNumber()
+SQInteger lexer_read_number(SQLexer * lexer)
 {
 #define TINT 1
 #define TFLOAT 2
 #define THEX 3
 #define TSCIENTIFIC 4
 #define TOCTAL 5
-    SQInteger type = TINT, firstchar = _currdata;
+    SQInteger type = TINT, firstchar = lexer->_currdata;
     SQChar *sTemp;
-    INIT_TEMP_STRING();
-    Next();
-    if(firstchar == _SC('0') && (toupper(_currdata) == _SC('X') || scisodigit(_currdata)) ) {
-        if(scisodigit(_currdata)) {
+    
+    strbuf_reset(&lexer->state.string_buffer);
+    lexer_next(lexer);
+    if(firstchar == _SC('0') && (toupper(lexer->_currdata) == _SC('X') || scisodigit(lexer->_currdata)) ) {
+        if(scisodigit(lexer->_currdata)) {
             type = TOCTAL;
-            while(scisodigit(_currdata)) {
-                APPEND_CHAR(_currdata);
-                Next();
+
+            while(scisodigit(lexer->_currdata)) {
+                strbuf_push_back(&lexer->state.string_buffer, lexer->_currdata);
+                lexer_next(lexer);
             }
-            if(scisdigit(_currdata)) Error(_SC("invalid octal number"));
-        }
-        else {
-            Next();
+
+            if (scisdigit(lexer->_currdata)) {
+                lexer_error(lexer, _SC("invalid octal number"));
+            }
+        } else {
+            lexer_next(lexer);
             type = THEX;
-            while(isxdigit(_currdata)) {
-                APPEND_CHAR(_currdata);
-                Next();
+
+            while (isxdigit(lexer->_currdata)) {
+                strbuf_push_back(&lexer->state.string_buffer, lexer->_currdata);
+                lexer_next(lexer);
             }
-            if(_longstr.size() > MAX_HEX_DIGITS) Error(_SC("too many digits for an Hex number"));
+
+            if (lexer->state.string_buffer.len > MAX_HEX_DIGITS) {
+                lexer_error(lexer, _SC("too many digits for an Hex number"));
+                // noreturn
+            }
         }
     }
     else {
-        APPEND_CHAR((int)firstchar);
-        while (_currdata == _SC('.') || scisdigit(_currdata) || isexponent(_currdata)) {
-            if(_currdata == _SC('.') || isexponent(_currdata)) type = TFLOAT;
-            if(isexponent(_currdata)) {
-                if(type != TFLOAT) Error(_SC("invalid numeric format"));
+        strbuf_push_back(&lexer->state.string_buffer, (int)firstchar);
+        while (lexer->_currdata == _SC('.') || scisdigit(lexer->_currdata) || isexponent(lexer->_currdata)) {
+            if(lexer->_currdata == _SC('.') || isexponent(lexer->_currdata)) type = TFLOAT;
+            if(isexponent(lexer->_currdata)) {
+                if(type != TFLOAT) lexer_error(lexer, _SC("invalid numeric format"));
                 type = TSCIENTIFIC;
-                APPEND_CHAR(_currdata);
-                Next();
-                if(_currdata == '+' || _currdata == '-'){
-                    APPEND_CHAR(_currdata);
-                    Next();
+                strbuf_push_back(&lexer->state.string_buffer, lexer->_currdata);
+                lexer_next(lexer);
+                if(lexer->_currdata == '+' || lexer->_currdata == '-'){
+                    strbuf_push_back(&lexer->state.string_buffer, lexer->_currdata);
+                    lexer_next(lexer);
                 }
-                if(!scisdigit(_currdata)) Error(_SC("exponent expected"));
+                if(!scisdigit(lexer->_currdata)) lexer_error(lexer, _SC("exponent expected"));
             }
 
-            APPEND_CHAR(_currdata);
-            Next();
+            strbuf_push_back(&lexer->state.string_buffer, lexer->_currdata);
+            lexer_next(lexer);
         }
     }
-    _longstr.push_back('\0');
+    strbuf_push_back(&lexer->state.string_buffer, '\0');
     switch(type) {
     case TSCIENTIFIC:
     case TFLOAT:
-        _fvalue = (SQFloat)scstrtod(&_longstr[0],&sTemp);
+        lexer->state.float_value = (SQFloat)scstrtod(reinterpret_cast<char const *>(&lexer->state.string_buffer.data[0]),&sTemp);
         return TK_FLOAT;
     case TINT:
-        LexInteger(&_longstr[0], &_nvalue);
+        LexInteger(reinterpret_cast<char const *>(&lexer->state.string_buffer.data[0]), &lexer->state.uint_value);
         return TK_INTEGER;
     case THEX:
-        LexHexadecimal(&_longstr[0], &_nvalue);
+        LexHexadecimal(reinterpret_cast<char const *>(&lexer->state.string_buffer.data[0]), &lexer->state.uint_value);
         return TK_INTEGER;
     case TOCTAL:
-        LexOctal(&_longstr[0], &_nvalue);
+        LexOctal(reinterpret_cast<char const *>(&lexer->state.string_buffer.data[0]), &lexer->state.uint_value);
         return TK_INTEGER;
     }
     return 0;
 }
 
-SQInteger SQLexer::ReadID()
-{
+SQInteger lexer_read_id(SQLexer * lexer) {
     SQInteger res;
-    INIT_TEMP_STRING();
+    strbuf_reset(&lexer->state.string_buffer);
     do {
-        APPEND_CHAR(_currdata);
-        Next();
-    } while(scisalnum(_currdata) || _currdata == _SC('_'));
-    _longstr.push_back('\0');
-    res = GetIDType(&_longstr[0],_longstr.size() - 1);
+        strbuf_push_back(&lexer->state.string_buffer, lexer->_currdata);
+        lexer_next(lexer);
+    } while(scisalnum(lexer->_currdata) || lexer->_currdata == _SC('_'));
+
+    strbuf_push_back(&lexer->state.string_buffer, '\0');
+
+    res = lexer_get_id_type(reinterpret_cast<char const *>(&lexer->state.string_buffer.data[0]), lexer->state.string_buffer.len - 1);
     if(res == TK_IDENTIFIER || res == TK_CONSTRUCTOR) {
-        _svalue = &_longstr[0];
+        lexer->state.string_value = reinterpret_cast<char const *>(&lexer->state.string_buffer.data[0]);
     }
+
     return res;
+}
+
+void lexer_block_comment(SQLexer * lexer) {
+    while (true) {
+        switch(lexer->_currdata) {
+        case '*':
+            lexer_next(lexer);
+            if (lexer->_currdata == '/') {
+                lexer_next(lexer);
+                return;
+            }
+            continue;
+        case '\n':
+            lexer->state.current_line++;
+            lexer_next(lexer);
+            continue;
+        case SQUIRREL_EOB:
+            lexer_error(lexer, "missing \"*/\" in comment");
+            // bug? lexer_error is noreturn probably.. because longjmp in compiler
+        default:
+            lexer_next(lexer);
+        }
+    }
+}
+
+void lexer_line_comment(SQLexer * lexer) {
+    do {
+        lexer_next(lexer);
+    } while (lexer->_currdata != '\n' && lexer->_currdata > SQUIRREL_EOB);
+}
+
+void lexer_init(SQLexer * lexer, SQLEXREADFUNC rg, void * up, CompilerErrorFunc efunc, void *ed) {
+    lexer->state.token = 0;
+    lexer->state.prev_token = 0;
+
+    lexer->state.current_line = 1;
+    lexer->state.current_column = 0;
+    lexer->state.last_token_line = 1;
+    lexer->state.uint_value = 0;
+    lexer->state.float_value = 0;
+    lexer->state.string_value = nullptr;
+    strbuf_init(&lexer->state.string_buffer);
+
+    lexer->reader_func = rg;
+    lexer->reader_context = up;
+    lexer->error_func = efunc;
+    lexer->error_context = ed;
+
+    lexer->_curtoken = 0;
+    lexer->_reached_eof = SQFalse;
+    lexer->_currdata = 0;
+
+    lexer_next(lexer);
+    lexer->state.current_column--;
+}
+
+LexerState * lexer_lex(SQLexer * lexer) {
+
+#define RETURN_TOKEN(t) { lexer->state.prev_token = lexer->_curtoken; lexer->_curtoken = t; lexer->state.token = t; return &lexer->state;}
+
+    lexer->state.last_token_line = lexer->state.current_line;
+
+    while(lexer->_currdata != SQUIRREL_EOB) {
+        switch(lexer->_currdata){
+        case '\t':
+        case '\r':
+        case ' ':
+            lexer_next(lexer);
+            continue;
+        case '\n':
+            lexer->state.current_line++;
+            lexer->state.prev_token = lexer->_curtoken;
+            lexer->_curtoken = '\n';
+            lexer_next(lexer);
+            lexer->state.current_column=1;
+            continue;
+        case '#':
+            lexer_line_comment(lexer);
+            continue;
+        case '/':
+            lexer_next(lexer);
+
+            switch (lexer->_currdata) {
+            case '*':
+                lexer_next(lexer);
+                lexer_block_comment(lexer);
+                continue;
+            case '/':
+                lexer_line_comment(lexer);
+                continue;
+            case '=':
+                lexer_next(lexer);
+                RETURN_TOKEN(TK_DIVEQ);
+            case '>':
+                lexer_next(lexer);
+                RETURN_TOKEN(TK_ATTR_CLOSE);
+            default:
+                RETURN_TOKEN('/');
+            }
+        case '=':
+            lexer_next(lexer);
+            if (lexer->_currdata == '=') {
+                lexer_next(lexer);
+                RETURN_TOKEN(TK_EQ);
+            } else {
+                RETURN_TOKEN('=');
+            }
+        case '<':
+            lexer_next(lexer);
+            switch(lexer->_currdata) {
+            case _SC('='):
+                lexer_next(lexer);
+                if(lexer->_currdata == _SC('>')) {
+                    lexer_next(lexer);
+                    RETURN_TOKEN(TK_3WAYSCMP);
+                }
+                RETURN_TOKEN(TK_LE)
+                break;
+            case _SC('-'): lexer_next(lexer); RETURN_TOKEN(TK_NEWSLOT); break;
+            case _SC('<'): lexer_next(lexer); RETURN_TOKEN(TK_SHIFTL); break;
+            case _SC('/'): lexer_next(lexer); RETURN_TOKEN(TK_ATTR_OPEN); break;
+            }
+            RETURN_TOKEN('<');
+        case _SC('>'):
+            lexer_next(lexer);
+            if (lexer->_currdata == _SC('=')){ lexer_next(lexer); RETURN_TOKEN(TK_GE);}
+            else if(lexer->_currdata == _SC('>')){
+                lexer_next(lexer);
+                if(lexer->_currdata == _SC('>')){
+                    lexer_next(lexer);
+                    RETURN_TOKEN(TK_USHIFTR);
+                }
+                RETURN_TOKEN(TK_SHIFTR);
+            }
+            else { RETURN_TOKEN('>') }
+        case _SC('!'):
+            lexer_next(lexer);
+            if (lexer->_currdata != _SC('=')){ RETURN_TOKEN('!')}
+            else { lexer_next(lexer); RETURN_TOKEN(TK_NE); }
+        case _SC('@'): {
+            SQInteger stype;
+            lexer_next(lexer);
+            if(lexer->_currdata != _SC('"')) {
+                RETURN_TOKEN('@');
+            }
+            if((stype=lexer_read_string(lexer, '"', true))!=-1) {
+                RETURN_TOKEN(stype);
+            }
+            lexer_error(lexer, _SC("error parsing the string"));
+                       }
+        case _SC('"'):
+        case _SC('\''): {
+            SQInteger stype;
+            if((stype=lexer_read_string(lexer, lexer->_currdata, false))!=-1){
+                RETURN_TOKEN(stype);
+            }
+            lexer_error(lexer, _SC("error parsing the string"));
+            }
+        case _SC('{'): case _SC('}'): case _SC('('): case _SC(')'): case _SC('['): case _SC(']'):
+        case _SC(';'): case _SC(','): case _SC('?'): case _SC('^'): case _SC('~'):
+            {SQInteger ret = lexer->_currdata;
+            lexer_next(lexer); RETURN_TOKEN(ret); }
+        case _SC('.'):
+            lexer_next(lexer);
+            if (lexer->_currdata != _SC('.')){ RETURN_TOKEN('.') }
+            lexer_next(lexer);
+            if (lexer->_currdata != _SC('.')){ lexer_error(lexer, _SC("invalid token '..'")); }
+            lexer_next(lexer);
+            RETURN_TOKEN(TK_VARPARAMS);
+        case _SC('&'):
+            lexer_next(lexer);
+            if (lexer->_currdata != _SC('&')){ RETURN_TOKEN('&') }
+            else { lexer_next(lexer); RETURN_TOKEN(TK_AND); }
+        case _SC('|'):
+            lexer_next(lexer);
+            if (lexer->_currdata != _SC('|')){ RETURN_TOKEN('|') }
+            else { lexer_next(lexer); RETURN_TOKEN(TK_OR); }
+        case _SC(':'):
+            lexer_next(lexer);
+            if (lexer->_currdata != _SC(':')){ RETURN_TOKEN(':') }
+            else { lexer_next(lexer); RETURN_TOKEN(TK_DOUBLE_COLON); }
+        case _SC('*'):
+            lexer_next(lexer);
+            if (lexer->_currdata == _SC('=')){ lexer_next(lexer); RETURN_TOKEN(TK_MULEQ);}
+            else RETURN_TOKEN('*');
+        case _SC('%'):
+            lexer_next(lexer);
+            if (lexer->_currdata == _SC('=')){ lexer_next(lexer); RETURN_TOKEN(TK_MODEQ);}
+            else RETURN_TOKEN('%');
+        case _SC('-'):
+            lexer_next(lexer);
+            if (lexer->_currdata == _SC('=')){ lexer_next(lexer); RETURN_TOKEN(TK_MINUSEQ);}
+            else if  (lexer->_currdata == _SC('-')){ lexer_next(lexer); RETURN_TOKEN(TK_MINUSMINUS);}
+            else RETURN_TOKEN('-');
+        case _SC('+'):
+            lexer_next(lexer);
+            if (lexer->_currdata == _SC('=')){ lexer_next(lexer); RETURN_TOKEN(TK_PLUSEQ);}
+            else if (lexer->_currdata == _SC('+')){ lexer_next(lexer); RETURN_TOKEN(TK_PLUSPLUS);}
+            else RETURN_TOKEN('+');
+        case SQUIRREL_EOB:
+            lexer->state.token = 0;
+            return &lexer->state;
+        default:{
+                if (scisdigit(lexer->_currdata)) {
+                    SQInteger ret = lexer_read_number(lexer);
+                    RETURN_TOKEN(ret);
+                }
+                else if (scisalpha(lexer->_currdata) || lexer->_currdata == _SC('_')) {
+                    SQInteger t = lexer_read_id(lexer);
+                    RETURN_TOKEN(t);
+                }
+                else {
+                    SQInteger c = lexer->_currdata;
+                    if (sciscntrl((int)c)) lexer_error(lexer, _SC("unexpected character(control)"));
+                    lexer_next(lexer);
+                    RETURN_TOKEN(c);
+                }
+                RETURN_TOKEN(0);
+            }
+        }
+    }
+
+    lexer->state.token = 0;
+    return &lexer->state;
 }

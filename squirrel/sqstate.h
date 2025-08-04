@@ -4,7 +4,7 @@
 
 #include "squtils.h"
 #include "sqobject.h"
-#include "string_table.h"
+#include "strtab.h"
 
 struct SQString;
 struct SQTable;

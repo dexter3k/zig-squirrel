@@ -131,7 +131,10 @@ public:
     }
     bool EnterFrame(SQInteger newbase, SQInteger newtop, bool tailcall);
     void LeaveFrame();
-    void Release(){ sq_delete(this,SQVM); }
+    void Release() {
+        this->~SQVM();
+        sq_vm_free(this, sizeof(*this));
+    }
 ////////////////////////////////////////////////////////////////////////////
     //stack functions for the api
     void Remove(SQInteger n);

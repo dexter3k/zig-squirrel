@@ -639,10 +639,10 @@ SQFuncState *SQFuncState::PushChildState(SQSharedState *ss)
     return child;
 }
 
-void SQFuncState::PopChildState()
-{
-    SQFuncState *child = _childstates.back();
-    sq_delete(child,SQFuncState);
+void SQFuncState::PopChildState() {
+    SQFuncState * child = _childstates.back();
+    child->~SQFuncState();
+    sq_vm_free(child, sizeof(*child));
     _childstates.pop_back();
 }
 

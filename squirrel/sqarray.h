@@ -54,29 +54,43 @@ public:
         //nothing to iterate anymore
         return -1;
     }
+
     SQArray *Clone(){SQArray *anew=Create(_opt_ss(this),0); anew->_values.copy(_values); return anew; }
+
     SQInteger Size() const {return _values.size();}
+
     void Resize(SQInteger size)
     {
         SQObjectPtr _null;
         Resize(size,_null);
     }
+
     void Resize(SQInteger size,SQObjectPtr &fill) { _values.resize(size,fill); ShrinkIfNeeded(); }
+
     void Reserve(SQInteger size) { _values.reserve(size); }
+
     void Append(const SQObject &o){_values.push_back(o);}
+
     void Extend(const SQArray *a);
+
     SQObjectPtr &Top(){return _values.top();}
+
     void Pop(){_values.pop_back(); ShrinkIfNeeded(); }
+
     bool Insert(SQInteger idx,const SQObject &val){
-        if(idx < 0 || idx > (SQInteger)_values.size())
+        if(idx < 0 || idx > (SQInteger)_values.size()) {
             return false;
+        }
         _values.insert(idx,val);
         return true;
     }
+
     void ShrinkIfNeeded() {
-        if(_values.size() <= _values.capacity()>>2) //shrink the array
+        if (_values.size() <= _values.capacity() >> 2) {
             _values.shrinktofit();
+        }
     }
+
     bool Remove(SQInteger idx){
         if(idx < 0 || idx >= (SQInteger)_values.size())
             return false;
@@ -84,9 +98,10 @@ public:
         ShrinkIfNeeded();
         return true;
     }
-    void Release()
-    {
-        sq_delete(this,SQArray);
+
+    void Release() {
+        this->~SQArray();
+        sq_vm_free(this, sizeof(*this));
     }
 
     sqvector<SQObjectPtr> _values;

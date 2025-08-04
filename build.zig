@@ -9,13 +9,17 @@ pub fn build(b: *std.Build) void {
         .target = target,
         .optimize = optimize,
         .link_libcpp = true,
+        .root_source_file = b.path("squirrel/root.zig"),
     });
     squirrel_lib_mod.addCMacro("_SQ64", "1");
     // squirrel_lib_mod.addCMacro("_DEBUG_DUMP", "1");
     squirrel_lib_mod.addIncludePath(b.path("include/"));
+    squirrel_lib_mod.addIncludePath(b.path("squirrel/"));
     squirrel_lib_mod.addCSourceFiles(.{
         .root = b.path("squirrel/"),
         .files = &.{
+            "strtab.c",
+
             "sqapi.cpp",
             "sqbaselib.cpp",
             "sqfuncstate.cpp",
@@ -28,7 +32,6 @@ pub fn build(b: *std.Build) void {
             "sqmem.cpp",
             "sqvm.cpp",
             "sqclass.cpp",
-            "string_table.cpp",
         },
         .flags = &.{
             "-Wall",

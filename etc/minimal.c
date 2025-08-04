@@ -10,13 +10,7 @@
 #pragma comment (lib ,"sqstdlib.lib")
 #endif
 
-#ifdef SQUNICODE
-
-#define scvprintf vfwprintf
-#else
-
 #define scvprintf vfprintf
-#endif
 
 void printfunc(HSQUIRRELVM v,const SQChar *s,...)
 {

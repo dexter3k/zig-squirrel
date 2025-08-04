@@ -258,19 +258,20 @@ fn interactive(vm: csq.HSQUIRRELVM) void {
 
 const squirrel = @import("squirrel.zig");
 const Squirrel = squirrel.Squirrel(u32, f32, false);
+const Gc = @import("Gc.zig");
 
 fn pg() !void {
     var debug_allocator: std.heap.DebugAllocator(.{}) = .init;
     defer _ = debug_allocator.deinit();
     const gpa = debug_allocator.allocator();
 
-    const vm: *Squirrel.VM = try .init(gpa, .{ .initial_stack = 1024 });
-    defer vm.deinit();
-
-    std.debug.print("{any}\n", .{vm});
+    const gc: *Gc = try .init(gpa);
+    defer gc.deinit();
 }
 
 pub fn main() !void {
+    try pg();
+
     // Fix console output on Windows
     var original_cp: if (builtin.os.tag == .windows) c_uint else void = undefined;
     if (builtin.os.tag == .windows) {
