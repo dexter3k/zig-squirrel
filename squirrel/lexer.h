@@ -108,12 +108,11 @@ typedef struct {
     uint8_t _currdata;
 } SQLexer;
 
+extern void lexer_init(SQLexer * lexer, SQLEXREADFUNC rg, void * up, CompilerErrorFunc efunc, void *ed);
 extern void lexer_deinit(SQLexer * lexer);
+extern LexerState * lexer_lex(SQLexer * lexer);
 
 #ifdef __cplusplus
 }
-
-extern void lexer_init(SQLexer * lexer, SQLEXREADFUNC rg, void * up, CompilerErrorFunc efunc, void *ed);
-extern LexerState * lexer_lex(SQLexer * lexer);
 
 #endif

@@ -37,19 +37,19 @@ pub const Strbuf = extern struct {
     }
 };
 
-export fn strbuf_init(self: *Strbuf) void {
+pub export fn strbuf_init(self: *Strbuf) void {
     self.* = .init;
 }
 
-export fn strbuf_deinit(self: *Strbuf) void {
+pub export fn strbuf_deinit(self: *Strbuf) void {
     self.deinit();
 }
 
-export fn strbuf_reset(self: *Strbuf) void {
+pub export fn strbuf_reset(self: *Strbuf) void {
     self.len = 0;
 }
 
-export fn strbuf_push_back(self: *Strbuf, value: u8) void {
+pub export fn strbuf_push_back(self: *Strbuf, value: u8) void {
     if (self.cap <= self.len) {
         self.grow() catch @panic("can't grow strbuf");
     }
@@ -57,20 +57,20 @@ export fn strbuf_push_back(self: *Strbuf, value: u8) void {
     self.len += 1;
 }
 
-export fn strbuf_push_back_utf8(self: *Strbuf, ch: u32) void {
+pub export fn strbuf_push_back_utf8(self: *Strbuf, ch: u32) void {
     if (ch < 0x80) {
         strbuf_push_back(self, @truncate(ch));
     } else if (ch < 0x800) {
-        strbuf_push_back(self, @truncate((ch >> 6) | 0xC0));
-        strbuf_push_back(self, @truncate((ch & 0x3F) | 0x80));
+        strbuf_push_back(self, @truncate(0b11000000 | (ch >> 6)));
+        strbuf_push_back(self, @truncate(0b10000000 | (ch & 0b00111111)));
     } else if (ch < 0x10000) {
-        strbuf_push_back(self, @truncate((ch >> 12) | 0xE0));
-        strbuf_push_back(self, @truncate(((ch >> 6) & 0x3F) | 0x80));
-        strbuf_push_back(self, @truncate((ch & 0x3F) | 0x80));
+        strbuf_push_back(self, @truncate(0b11100000 | (ch >> 12)));
+        strbuf_push_back(self, @truncate(0b10000000 | ((ch >> 6) & 0x3F)));
+        strbuf_push_back(self, @truncate(0b10000000 | (ch & 0x3F)));
     } else if (ch < 0x110000) {
-        strbuf_push_back(self, @truncate((ch >> 18) | 0xF0));
-        strbuf_push_back(self, @truncate(((ch >> 12) & 0x3F) | 0x80));
-        strbuf_push_back(self, @truncate(((ch >> 6) & 0x3F) | 0x80));
-        strbuf_push_back(self, @truncate((ch & 0x3F) | 0x80));
+        strbuf_push_back(self, @truncate(0b11110000 | (ch >> 18)));
+        strbuf_push_back(self, @truncate(0b10000000 | ((ch >> 12) & 0b00111111)));
+        strbuf_push_back(self, @truncate(0b10000000 | ((ch >> 6) & 0b00111111)));
+        strbuf_push_back(self, @truncate(0b10000000 | (ch & 0b00111111)));
     }
 }
