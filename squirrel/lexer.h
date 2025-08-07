@@ -90,21 +90,20 @@ typedef struct {
     uint64_t uint_value;
     double float_value;
     char const * string_value;
-    Strbuf string_buffer; // replace with length value?
+    size_t string_length;
 } LexerState;
 
 typedef void(*CompilerErrorFunc)(void *ud, const SQChar *s);
 
 typedef struct {
     LexerState state;
+    Strbuf string_buffer;
 
     SQLEXREADFUNC reader_func;
     void * reader_context;
     CompilerErrorFunc error_func;
     void * error_context;
 
-    uint16_t _curtoken;
-    bool _reached_eof;
     uint8_t _currdata;
 } SQLexer;
 

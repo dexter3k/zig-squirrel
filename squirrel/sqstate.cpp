@@ -14,8 +14,7 @@
 #include "squserdata.h"
 #include "sqclass.h"
 
-bool CompileTypemask(sqvector<SQInteger> &res,const SQChar *typemask)
-{
+bool CompileTypemask(sqvector<SQInteger> & res, SQChar const * typemask) {
     SQInteger i = 0;
     SQInteger mask = 0;
     while(typemask[i] != 0) {

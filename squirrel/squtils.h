@@ -1,15 +1,15 @@
 #pragma once
 
-void *sq_vm_malloc(SQUnsignedInteger size);
-void *sq_vm_realloc(void *p,SQUnsignedInteger oldsize,SQUnsignedInteger size);
-void sq_vm_free(void *p,SQUnsignedInteger size);
+#include <cstdint>
+
+#include "sqmem.h"
 
 #define sq_aligning(v) (((size_t)(v) + (SQ_ALIGNMENT-1)) & (~(SQ_ALIGNMENT-1)))
 
 template<typename T>
 class sqvector {
-    SQUnsignedInteger len;
-    SQUnsignedInteger cap;
+    size_t len;
+    size_t cap;
 public:
     T* _vals;
 
@@ -32,7 +32,7 @@ public:
             _realloc(v.len);
         }
 
-        for(SQUnsignedInteger i = 0; i < v.len; i++) {
+        for(size_t i = 0; i < v.len; i++) {
             new ((void *)&_vals[i]) T(v._vals[i]);
         }
 
@@ -41,7 +41,7 @@ public:
 
     ~sqvector() {
         if(cap) {
-            for(SQUnsignedInteger i = 0; i < len; i++) {
+            for(size_t i = 0; i < len; i++) {
                 _vals[i].~T();
             }
 
@@ -49,11 +49,11 @@ public:
         }
     }
 
-    void reserve(SQUnsignedInteger newsize) {
+    void reserve(size_t newsize) {
         _realloc(newsize);
     }
 
-    void resize(SQUnsignedInteger newsize, const T& fill = T()) {
+    void resize(size_t newsize, const T& fill = T()) {
         if(newsize > cap) {
             _realloc(newsize);
         }
@@ -64,7 +64,7 @@ public:
                 len++;
             }
         } else {
-            for (SQUnsignedInteger i = newsize; i < len; i++) {
+            for (size_t i = newsize; i < len; i++) {
                 _vals[i].~T();
             }
             len = newsize;
@@ -81,7 +81,7 @@ public:
         return _vals[len - 1];
     }
 
-    inline SQUnsignedInteger size() const {
+    inline size_t size() const {
         return len;
     }
 
@@ -101,17 +101,17 @@ public:
         _vals[len].~T();
     }
 
-    void insert(SQUnsignedInteger idx, const T& val) {
+    void insert(size_t idx, const T& val) {
         resize(len + 1);
 
-        for(SQUnsignedInteger i = len - 1; i > idx; i--) {
+        for(size_t i = len - 1; i > idx; i--) {
             _vals[i] = _vals[i - 1];
         }
 
         _vals[idx] = val;
     }
 
-    void remove(SQUnsignedInteger idx) {
+    void remove(size_t idx) {
         _vals[idx].~T();
 
         if(idx < (len - 1)) {
@@ -121,7 +121,7 @@ public:
         len--;
     }
 
-    SQUnsignedInteger capacity() {
+    size_t capacity() {
         return cap;
     }
 
@@ -129,11 +129,11 @@ public:
         return _vals[len - 1];
     }
 
-    inline T & operator[](SQUnsignedInteger pos) const {
+    inline T & operator[](size_t pos) const {
         return _vals[pos];
     }
 private:
-    void _realloc(SQUnsignedInteger newsize) {
+    void _realloc(size_t newsize) {
         newsize = (newsize > 0)
             ? newsize
             : 4;

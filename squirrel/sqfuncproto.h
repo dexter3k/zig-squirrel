@@ -36,7 +36,6 @@ struct SQLocalVarInfo
 struct SQLineInfo { SQInteger _line;SQInteger _op; };
 
 typedef sqvector<SQOuterVar> SQOuterVarVec;
-typedef sqvector<SQLocalVarInfo> SQLocalVarInfoVec;
 typedef sqvector<SQLineInfo> SQLineInfoVec;
 
 #define _FUNC_SIZE(ni,nl,nparams,nfuncs,nouters,nlineinf,localinf,defparams) (sizeof(SQFunctionProto) \

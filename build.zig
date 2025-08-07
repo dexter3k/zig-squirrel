@@ -28,7 +28,7 @@ pub fn build(b: *std.Build) void {
             "sqcompiler.cpp",
             "sqstate.cpp",
             "sqtable.cpp",
-            "sqmem.cpp",
+            "sqmem.c",
             "sqvm.cpp",
             "sqclass.cpp",
         },

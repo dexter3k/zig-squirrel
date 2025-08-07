@@ -66,7 +66,7 @@ export fn lexer_init(
     lexer.state.uint_value = 0;
     lexer.state.float_value = 0;
     lexer.state.string_value = null;
-    strbuf.strbuf_init(@ptrCast(&lexer.state.string_buffer));
+    strbuf.strbuf_init(@ptrCast(&lexer.string_buffer));
 
     lexer.reader_func = rf;
     lexer.reader_context = rc;
@@ -74,7 +74,6 @@ export fn lexer_init(
     lexer.error_context = ec;
 
     lexer.state.token = 0;
-    lexer._reached_eof = false;
     lexer._currdata = 0;
 
     lexer_next(lexer);
@@ -82,32 +81,29 @@ export fn lexer_init(
 }
 
 export fn lexer_deinit(lexer: *cLexer.SQLexer) void {
-    const buf: *strbuf.Strbuf = @ptrCast(&lexer.state.string_buffer);
+    const buf: *strbuf.Strbuf = @ptrCast(&lexer.string_buffer);
     buf.deinit();
 }
 
-export fn lexer_error(lexer: *cLexer.SQLexer, err: [*:0]const u8) void {
+fn lexer_error(lexer: *cLexer.SQLexer, err: [*:0]const u8) void {
     lexer.error_func.?(lexer.error_context, err);
+    unreachable;
 }
 
-export fn lexer_next(lexer: *cLexer.SQLexer) void {
+fn lexer_next(lexer: *cLexer.SQLexer) void {
     const t = lexer.reader_func.?(lexer.reader_context);
 
     lexer.state.current_column += 1;
     lexer._currdata = t;
-
-    if (t == 0) {
-        lexer._reached_eof = true;
-    }
 }
 
-export fn lexer_line_comment(lexer: *cLexer.SQLexer) void {
+fn lexer_line_comment(lexer: *cLexer.SQLexer) void {
     while (lexer._currdata != '\n' and lexer._currdata != 0) {
         lexer_next(lexer);
     }
 }
 
-export fn lexer_block_comment(lexer: *cLexer.SQLexer) void {
+fn lexer_block_comment(lexer: *cLexer.SQLexer) void {
     while (true) switch (lexer._currdata) {
         '*' => {
             lexer_next(lexer);
@@ -126,7 +122,6 @@ export fn lexer_block_comment(lexer: *cLexer.SQLexer) void {
         },
         0 => {
             lexer_error(lexer, "missing \"*/\" in comment");
-            unreachable;
         },
         else => lexer_next(lexer),
     };
@@ -166,7 +161,6 @@ fn lex_integer_hex_limited(lexer: *cLexer.SQLexer, limit: usize) u32 {
 
     if (!std.ascii.isHex(lexer._currdata)) {
         lexer_error(lexer, "hexadecimal number expected");
-        unreachable;
     }
 
     var res: u32 = 0;
@@ -191,68 +185,65 @@ fn lexer_read_escape(lexer: *cLexer.SQLexer) void {
 
     switch (escape) {
         'x' => strbuf.strbuf_push_back(
-            @ptrCast(&lexer.state.string_buffer),
+            @ptrCast(&lexer.string_buffer),
             @intCast(lex_integer_hex_limited(lexer, 2)),
         ),
         'u', 'U' => strbuf.strbuf_push_back_utf8(
-            @ptrCast(&lexer.state.string_buffer),
+            @ptrCast(&lexer.string_buffer),
             lex_integer_hex_limited(lexer, if (escape == 'u') 4 else 8),
         ),
-        't' => strbuf.strbuf_push_back(@ptrCast(&lexer.state.string_buffer), '\t'),
-        'n' => strbuf.strbuf_push_back(@ptrCast(&lexer.state.string_buffer), '\n'),
-        'r' => strbuf.strbuf_push_back(@ptrCast(&lexer.state.string_buffer), '\r'),
-        'a' => strbuf.strbuf_push_back(@ptrCast(&lexer.state.string_buffer), '\x07'),
-        'b' => strbuf.strbuf_push_back(@ptrCast(&lexer.state.string_buffer), '\x08'),
-        'v' => strbuf.strbuf_push_back(@ptrCast(&lexer.state.string_buffer), '\x0b'),
-        'f' => strbuf.strbuf_push_back(@ptrCast(&lexer.state.string_buffer), '\x0c'),
-        '0' => strbuf.strbuf_push_back(@ptrCast(&lexer.state.string_buffer), '\x00'),
-        '"' => strbuf.strbuf_push_back(@ptrCast(&lexer.state.string_buffer), '"'),
-        '\\' => strbuf.strbuf_push_back(@ptrCast(&lexer.state.string_buffer), '\\'),
-        '\'' => strbuf.strbuf_push_back(@ptrCast(&lexer.state.string_buffer), '\''),
+        't' => strbuf.strbuf_push_back(@ptrCast(&lexer.string_buffer), '\t'),
+        'n' => strbuf.strbuf_push_back(@ptrCast(&lexer.string_buffer), '\n'),
+        'r' => strbuf.strbuf_push_back(@ptrCast(&lexer.string_buffer), '\r'),
+        'a' => strbuf.strbuf_push_back(@ptrCast(&lexer.string_buffer), '\x07'),
+        'b' => strbuf.strbuf_push_back(@ptrCast(&lexer.string_buffer), '\x08'),
+        'v' => strbuf.strbuf_push_back(@ptrCast(&lexer.string_buffer), '\x0b'),
+        'f' => strbuf.strbuf_push_back(@ptrCast(&lexer.string_buffer), '\x0c'),
+        '0' => strbuf.strbuf_push_back(@ptrCast(&lexer.string_buffer), '\x00'),
+        '"' => strbuf.strbuf_push_back(@ptrCast(&lexer.string_buffer), '"'),
+        '\\' => strbuf.strbuf_push_back(@ptrCast(&lexer.string_buffer), '\\'),
+        '\'' => strbuf.strbuf_push_back(@ptrCast(&lexer.string_buffer), '\''),
         else => {
             lexer_error(lexer, "unrecognised escaper char");
-            unreachable;
         },
     }
 }
 
-export fn lexer_read_string(lexer: *cLexer.SQLexer, delimiter: u8, verbatim: bool) u16 {
-    strbuf.strbuf_reset(@ptrCast(&lexer.state.string_buffer));
+fn lexer_read_string(lexer: *cLexer.SQLexer, delimiter: u8, verbatim: bool) u16 {
+    strbuf.strbuf_reset(@ptrCast(&lexer.string_buffer));
     lexer_next(lexer);
 
     while (true) {
         while (lexer._currdata != delimiter) switch (lexer._currdata) {
             else => {
-                strbuf.strbuf_push_back(@ptrCast(&lexer.state.string_buffer), lexer._currdata);
+                strbuf.strbuf_push_back(@ptrCast(&lexer.string_buffer), lexer._currdata);
                 lexer_next(lexer);
             },
             '\n' => {
                 lexer_next(lexer);
                 if (!verbatim) {
                     lexer_error(lexer, "newline in a constant");
-                    unreachable;
                 }
-                strbuf.strbuf_push_back(@ptrCast(&lexer.state.string_buffer), '\n');
+                strbuf.strbuf_push_back(@ptrCast(&lexer.string_buffer), '\n');
                 lexer.state.current_line += 1;
             },
             '\\' => {
                 lexer_next(lexer);
                 if (verbatim) {
-                    strbuf.strbuf_push_back(@ptrCast(&lexer.state.string_buffer), '\\');
+                    strbuf.strbuf_push_back(@ptrCast(&lexer.string_buffer), '\\');
                 } else {
                     lexer_read_escape(lexer);
                 }
             },
             0 => {
                 lexer_error(lexer, "EOF before end of the string");
-                unreachable;
             },
         };
 
         lexer_next(lexer);
         if (verbatim and lexer._currdata == '"') {
             // continue on double quotations inside verbatim strings
-            strbuf.strbuf_push_back(@ptrCast(&lexer.state.string_buffer), lexer._currdata);
+            strbuf.strbuf_push_back(@ptrCast(&lexer.string_buffer), lexer._currdata);
             lexer_next(lexer);
             continue;
         }
@@ -260,27 +251,25 @@ export fn lexer_read_string(lexer: *cLexer.SQLexer, delimiter: u8, verbatim: boo
         break;
     }
 
-    strbuf.strbuf_push_back(@ptrCast(&lexer.state.string_buffer), '\x00');
-    const len = lexer.state.string_buffer.len - 1;
+    strbuf.strbuf_push_back(@ptrCast(&lexer.string_buffer), '\x00');
+    const len = lexer.string_buffer.len - 1;
 
     if (delimiter == '\'') {
         if (len == 0) {
             lexer_error(lexer, "empty constant");
-            unreachable;
         }
         if (len == 1) {
             lexer_error(lexer, "constant too long");
-            unreachable;
         }
 
         // sign-extend the value!
-        const signed_byte: i8 = @bitCast(lexer.state.string_buffer.data[0]);
+        const signed_byte: i8 = @bitCast(lexer.string_buffer.data[0]);
         lexer.state.uint_value = @bitCast(@as(i64, signed_byte));
         return cLexer.TK_INTEGER;
     }
 
     // *u8 -> *i8
-    lexer.state.string_value = @ptrCast(&lexer.state.string_buffer.data[0]);
+    lexer.state.string_value = @ptrCast(&lexer.string_buffer.data[0]);
     return cLexer.TK_STRING_LITERAL;
 }
 
@@ -298,48 +287,46 @@ fn is_exponent(c: u8) bool {
     };
 }
 
-export fn lexer_read_number(lexer: *cLexer.SQLexer) u16 {
+fn lexer_read_number(lexer: *cLexer.SQLexer) u16 {
     const first_token = lexer._currdata;
-    strbuf.strbuf_reset(@ptrCast(&lexer.state.string_buffer));
+    strbuf.strbuf_reset(@ptrCast(&lexer.string_buffer));
     lexer_next(lexer);
 
     if (first_token == '0' and std.ascii.toUpper(lexer._currdata) == 'X') {
         lexer_next(lexer);
 
         while (std.ascii.isHex(lexer._currdata)) {
-            strbuf.strbuf_push_back(@ptrCast(&lexer.state.string_buffer), lexer._currdata);
+            strbuf.strbuf_push_back(@ptrCast(&lexer.string_buffer), lexer._currdata);
             lexer_next(lexer);
         }
 
-        if (lexer.state.string_buffer.len > 16) {
+        if (lexer.string_buffer.len > 16) {
             lexer_error(lexer, "too many digits for a hex number");
-            unreachable;
         }
 
-        strbuf.strbuf_push_back(@ptrCast(&lexer.state.string_buffer), '\x00');
-        lex_integer_hex(lexer.state.string_buffer.data, &lexer.state.uint_value);
+        strbuf.strbuf_push_back(@ptrCast(&lexer.string_buffer), '\x00');
+        lex_integer_hex(lexer.string_buffer.data, &lexer.state.uint_value);
 
         return cLexer.TK_INTEGER;
     }
 
     if (first_token == '0' and is_oct_digit(lexer._currdata)) {
         while (is_oct_digit(lexer._currdata)) {
-            strbuf.strbuf_push_back(@ptrCast(&lexer.state.string_buffer), lexer._currdata);
+            strbuf.strbuf_push_back(@ptrCast(&lexer.string_buffer), lexer._currdata);
             lexer_next(lexer);
         }
 
         if (std.ascii.isDigit(lexer._currdata)) {
             lexer_error(lexer, "invalid octal number");
-            unreachable;
         }
 
-        strbuf.strbuf_push_back(@ptrCast(&lexer.state.string_buffer), '\x00');
-        lex_integer_oct(lexer.state.string_buffer.data, &lexer.state.uint_value);
+        strbuf.strbuf_push_back(@ptrCast(&lexer.string_buffer), '\x00');
+        lex_integer_oct(lexer.string_buffer.data, &lexer.state.uint_value);
 
         return cLexer.TK_INTEGER;
     }
 
-    strbuf.strbuf_push_back(@ptrCast(&lexer.state.string_buffer), first_token);
+    strbuf.strbuf_push_back(@ptrCast(&lexer.string_buffer), first_token);
 
     var is_float = false;
     while (lexer._currdata == '.' or std.ascii.isDigit(lexer._currdata) or is_exponent(lexer._currdata)) {
@@ -348,36 +335,35 @@ export fn lexer_read_number(lexer: *cLexer.SQLexer) u16 {
         } else if (is_exponent(lexer._currdata)) {
             is_float = true;
 
-            strbuf.strbuf_push_back(@ptrCast(&lexer.state.string_buffer), lexer._currdata);
+            strbuf.strbuf_push_back(@ptrCast(&lexer.string_buffer), lexer._currdata);
             lexer_next(lexer);
 
             if (lexer._currdata == '+' or lexer._currdata == '-') {
-                strbuf.strbuf_push_back(@ptrCast(&lexer.state.string_buffer), lexer._currdata);
+                strbuf.strbuf_push_back(@ptrCast(&lexer.string_buffer), lexer._currdata);
                 lexer_next(lexer);
             }
 
             if (!std.ascii.isDigit(lexer._currdata)) {
                 lexer_error(lexer, "exponent expected");
-                unreachable;
             }
         }
 
-        strbuf.strbuf_push_back(@ptrCast(&lexer.state.string_buffer), lexer._currdata);
+        strbuf.strbuf_push_back(@ptrCast(&lexer.string_buffer), lexer._currdata);
         lexer_next(lexer);
     }
 
-    strbuf.strbuf_push_back(@ptrCast(&lexer.state.string_buffer), '\x00');
+    strbuf.strbuf_push_back(@ptrCast(&lexer.string_buffer), '\x00');
 
     if (is_float) {
-        // lexer.state.float_value = strtod(lexer.state.string_buffer.data, nullptr);
+        // TODO: replicate strtod behaviour
         lexer.state.float_value = std.fmt.parseFloat(
             f64,
-            lexer.state.string_buffer.data[0..lexer.state.string_buffer.len],
+            lexer.string_buffer.data[0..lexer.string_buffer.len],
         ) catch 0;
         return cLexer.TK_FLOAT;
     }
 
-    lex_integer_dec(lexer.state.string_buffer.data, &lexer.state.uint_value);
+    lex_integer_dec(lexer.string_buffer.data, &lexer.state.uint_value);
     return cLexer.TK_INTEGER;
 }
 
@@ -445,28 +431,28 @@ fn lexer_string_to_token(s: []const u8) u16 {
     return cLexer.TK_IDENTIFIER;
 }
 
-export fn lexer_read_id(lexer: *cLexer.SQLexer) u16 {
-    strbuf.strbuf_reset(@ptrCast(&lexer.state.string_buffer));
+fn lexer_read_id(lexer: *cLexer.SQLexer) u16 {
+    strbuf.strbuf_reset(@ptrCast(&lexer.string_buffer));
 
     while (true) {
-        strbuf.strbuf_push_back(@ptrCast(&lexer.state.string_buffer), lexer._currdata);
+        strbuf.strbuf_push_back(@ptrCast(&lexer.string_buffer), lexer._currdata);
         lexer_next(lexer);
 
         if (!std.ascii.isAlphanumeric(lexer._currdata) and lexer._currdata != '_') {
             break;
         }
     }
-    strbuf.strbuf_push_back(@ptrCast(&lexer.state.string_buffer), '\x00');
+    strbuf.strbuf_push_back(@ptrCast(&lexer.string_buffer), '\x00');
 
-    const res = lexer_string_to_token(lexer.state.string_buffer.data[0 .. lexer.state.string_buffer.len - 1]);
+    const res = lexer_string_to_token(lexer.string_buffer.data[0 .. lexer.string_buffer.len - 1]);
     if (res == cLexer.TK_IDENTIFIER or res == cLexer.TK_CONSTRUCTOR) {
-        lexer.state.string_value = @ptrCast(&lexer.state.string_buffer.data[0]);
+        lexer.state.string_value = @ptrCast(&lexer.string_buffer.data[0]);
     }
 
     return res;
 }
 
-export fn lexer_lex_internal(lexer: *cLexer.SQLexer) u16 {
+fn lexer_lex_internal(lexer: *cLexer.SQLexer) u16 {
     lexer.state.last_token_line = lexer.state.current_line;
 
     while (true) switch (lexer._currdata) {
@@ -595,7 +581,6 @@ export fn lexer_lex_internal(lexer: *cLexer.SQLexer) u16 {
                     switch (lexer._currdata) {
                         else => {
                             lexer_error(lexer, "invalid token '..'");
-                            unreachable;
                         },
                         '.' => {
                             lexer_next(lexer);
@@ -689,20 +674,20 @@ export fn lexer_lex_internal(lexer: *cLexer.SQLexer) u16 {
 
         1...8, 11...12, 14...31, '$', '\\', '`', 0x7f => {
             lexer_error(lexer, "unexpected control symbol");
-            unreachable;
         },
         0x80...0xff => {
             lexer_error(lexer, "unexpected unicode symbol");
-            unreachable;
         },
     };
-
-    unreachable;
 }
 
 export fn lexer_lex(lexer: *cLexer.SQLexer) *cLexer.LexerState {
     const token = lexer_lex_internal(lexer);
     lexer.state.prev_token = lexer.state.token;
     lexer.state.token = token;
+    if (token == cLexer.TK_STRING_LITERAL) {
+        lexer.state.string_length = lexer.string_buffer.len - 1;
+    }
+
     return &lexer.state;
 }

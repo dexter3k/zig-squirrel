@@ -259,74 +259,72 @@ void SQFuncState::SetInstructionParam(SQInteger pos,SQInteger arg,SQInteger val)
     };
 }
 
-SQInteger SQFuncState::AllocStackPos()
-{
-    SQInteger npos=_vlocals.size();
+uint8_t SQFuncState::AllocStackPos() {
+    if (_vlocals.size() > MAX_FUNC_STACKSIZE) {
+        Error("internal compiler error: alloc stack: too many locals");
+        // noreturn
+    }
+
+    uint8_t const pos = _vlocals.size();
     _vlocals.push_back(SQLocalVarInfo());
-    if(_vlocals.size()>((SQUnsignedInteger)_stacksize)) {
-        if(_stacksize>MAX_FUNC_STACKSIZE) Error(_SC("internal compiler error: too many locals"));
-        _stacksize=_vlocals.size();
+
+    if (_vlocals.size() > _stacksize) {
+        _stacksize = _vlocals.size();
     }
-    return npos;
+
+    return pos;
 }
 
-SQInteger SQFuncState::PushTarget(SQInteger n)
-{
-    if(n!=-1){
-        _targetstack.push_back(n);
-        return n;
-    }
-    n=AllocStackPos();
+uint8_t SQFuncState::PushNewTarget() {
+    uint8_t target = this->AllocStackPos();
+    _targetstack.push_back(target);
+    return target;
+}
+
+void SQFuncState::PushTarget(uint8_t n) {
     _targetstack.push_back(n);
-    return n;
 }
 
-SQInteger SQFuncState::GetUpTarget(SQInteger n){
-    return _targetstack[((_targetstack.size()-1)-n)];
-}
-
-SQInteger SQFuncState::TopTarget(){
+uint8_t SQFuncState::TopTarget() {
     return _targetstack.back();
 }
-SQInteger SQFuncState::PopTarget()
-{
-    SQUnsignedInteger npos=_targetstack.back();
+
+uint8_t SQFuncState::PopTarget() {
+    uint8_t npos = _targetstack.back();
     assert(npos < _vlocals.size());
-    SQLocalVarInfo &t = _vlocals[npos];
-    if(sq_type(t._name)==OT_NULL){
+
+    SQLocalVarInfo & t = _vlocals[npos];
+    if (sq_type(t._name) == OT_NULL) {
         _vlocals.pop_back();
     }
     _targetstack.pop_back();
     return npos;
 }
 
-SQInteger SQFuncState::GetStackSize()
-{
+uint16_t SQFuncState::GetStackSize() {
     return _vlocals.size();
 }
 
-SQInteger SQFuncState::CountOuters(SQInteger stacksize)
-{
+SQInteger SQFuncState::CountOuters(SQInteger stacksize) {
     SQInteger outers = 0;
     SQInteger k = _vlocals.size() - 1;
     while(k >= stacksize) {
         SQLocalVarInfo &lvi = _vlocals[k];
         k--;
-        if(lvi._end_op == UINT_MINUS_ONE) { //this means is an outer
+        if (lvi._end_op == UINT_MINUS_ONE) { //this means is an outer
             outers++;
         }
     }
     return outers;
 }
 
-void SQFuncState::SetStackSize(SQInteger n)
-{
-    SQInteger size=_vlocals.size();
-    while(size>n){
+void SQFuncState::SetStackSize(SQInteger n) {
+    SQInteger size = _vlocals.size();
+    while (size > n) {
         size--;
         SQLocalVarInfo lvi = _vlocals.back();
-        if(sq_type(lvi._name)!=OT_NULL){
-            if(lvi._end_op == UINT_MINUS_ONE) { //this means is an outer
+        if (sq_type(lvi._name) != OT_NULL) {
+            if (lvi._end_op == UINT_MINUS_ONE) { //this means is an outer
                 _outers--;
             }
             lvi._end_op = GetCurrentPos();
@@ -336,44 +334,51 @@ void SQFuncState::SetStackSize(SQInteger n)
     }
 }
 
-bool SQFuncState::IsConstant(const SQObject &name,SQObject &e)
-{
+bool SQFuncState::IsConstant(SQObject const & name, SQObject & e) {
     SQObjectPtr val;
-    if(_table(_sharedstate->_consts)->Get(name,val)) {
+    if (_table(_sharedstate->_consts)->Get(name,val)) {
         e = val;
         return true;
     }
     return false;
 }
 
-bool SQFuncState::IsLocal(SQUnsignedInteger stkpos)
-{
-    if(stkpos>=_vlocals.size())return false;
-    else if(sq_type(_vlocals[stkpos]._name)!=OT_NULL)return true;
+bool SQFuncState::IsLocal(SQUnsignedInteger stkpos) {
+    if (stkpos >= _vlocals.size()) {
+        return false;
+    } else if (sq_type(_vlocals[stkpos]._name) != OT_NULL) {
+        return true;
+    }
     return false;
 }
 
-SQInteger SQFuncState::PushLocalVariable(const SQObject &name)
-{
-    SQInteger pos=_vlocals.size();
+uint8_t SQFuncState::PushLocalVariable(SQObject const & name) {
+    if (_vlocals.size() > MAX_FUNC_STACKSIZE) {
+        Error("internal compiler error: push local: too many locals");
+        // noreturn
+    }
+
+    uint8_t const pos = _vlocals.size();
+
     SQLocalVarInfo lvi;
-    lvi._name=name;
-    lvi._start_op=GetCurrentPos()+1;
-    lvi._pos=_vlocals.size();
+    lvi._name = name;
+    lvi._start_op = GetCurrentPos() + 1;
+    lvi._pos = _vlocals.size();
     _vlocals.push_back(lvi);
-    if(_vlocals.size()>((SQUnsignedInteger)_stacksize))_stacksize=_vlocals.size();
+
+    if (_vlocals.size() > _stacksize) {
+        _stacksize = _vlocals.size();
+    }
+
     return pos;
 }
 
-
-
-SQInteger SQFuncState::GetLocalVariable(const SQObject &name)
-{
-    SQInteger locals=_vlocals.size();
-    while(locals>=1){
-        SQLocalVarInfo &lvi = _vlocals[locals-1];
-        if(sq_type(lvi._name)==OT_STRING && _string(lvi._name)==_string(name)){
-            return locals-1;
+SQInteger SQFuncState::GetLocalVariable(SQObject const & name) {
+    SQInteger locals = _vlocals.size();
+    while (locals >= 1) {
+        SQLocalVarInfo & lvi = _vlocals[locals - 1];
+        if (sq_type(lvi._name) == OT_STRING && _string(lvi._name) == _string(name)) {
+            return locals - 1;
         }
         locals--;
     }
@@ -415,18 +420,19 @@ SQInteger SQFuncState::GetOuterVariable(const SQObject &name)
     return -1;
 }
 
-void SQFuncState::AddParameter(const SQObject &name)
-{
+void SQFuncState::AddParameter(SQObject const & name) {
     PushLocalVariable(name);
     _parameters.push_back(name);
 }
 
-void SQFuncState::AddLineInfos(SQInteger line,bool lineop,bool force)
-{
+void SQFuncState::AddLineInfos(SQInteger line, bool lineop, bool force) {
     if(_lastline!=line || force){
         SQLineInfo li;
-        li._line=line;li._op=(GetCurrentPos()+1);
-        if(lineop)AddInstruction(_OP_LINE,0,line);
+        li._line = line;
+        li._op = (GetCurrentPos()+1);
+        if (lineop) {
+            AddInstruction(_OP_LINE, 0, line);
+        }
         if(_lastline!=line) {
             _lineinfos.push_back(li);
         }

@@ -189,10 +189,12 @@ void SQInstance::Finalize()
     _NULL_SQOBJECT_VECTOR(_values,nvalues);
 }
 
-SQInstance::~SQInstance()
-{
+SQInstance::~SQInstance() {
     REMOVE_FROM_CHAIN(&_sharedstate->_gc_chain, this);
-    if(_class){ Finalize(); } //if _class is null it was already finalized by the GC
+    // if _class is null it was already finalized by the GC
+    if (_class) {
+        Finalize();
+    }
 }
 
 bool SQInstance::GetMetaMethod(SQVM* SQ_UNUSED_ARG(v),SQMetaMethod mm,SQObjectPtr &res)

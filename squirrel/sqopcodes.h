@@ -2,6 +2,8 @@
 #ifndef _SQOPCODES_H_
 #define _SQOPCODES_H_
 
+#include <cstdint>
+
 #define MAX_FUNC_STACKSIZE 0xFF
 #define MAX_LITERALS ((SQInteger)0x7FFFFFFF)
 
@@ -109,7 +111,7 @@ struct SQInstructionDesc {
 struct SQInstruction {
     SQInstruction() {}
 
-    SQInstruction(SQOpcode _op, SQInteger a0 = 0, SQInteger a1 = 0, SQInteger a2 = 0, SQInteger a3 = 0)
+    SQInstruction(SQOpcode _op, uint8_t a0 = 0, int32_t a1 = 0, uint8_t a2 = 0, uint8_t a3 = 0)
         : _arg1(a1)
         , op(_op)
         , _arg0(a0)
@@ -118,11 +120,11 @@ struct SQInstruction {
     {}
 
 
-    SQInt32 _arg1;
-    unsigned char op;
-    unsigned char _arg0;
-    unsigned char _arg2;
-    unsigned char _arg3;
+    int32_t _arg1;
+    uint8_t op;
+    uint8_t _arg0;
+    uint8_t _arg2;
+    uint8_t _arg3;
 };
 
 #include "squtils.h"

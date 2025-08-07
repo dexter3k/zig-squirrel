@@ -282,59 +282,58 @@ static SQInteger base_callee(HSQUIRRELVM v)
 
 static const SQRegFunction base_funcs[]={
     //generic
-    {_SC("seterrorhandler"),base_seterrorhandler,2, NULL},
-    {_SC("setdebughook"),base_setdebughook,2, NULL},
-    {_SC("enabledebuginfo"),base_enabledebuginfo,2, NULL},
-    {_SC("getstackinfos"),base_getstackinfos,2, _SC(".n")},
-    {_SC("getroottable"),base_getroottable,1, NULL},
-    {_SC("setroottable"),base_setroottable,2, NULL},
-    {_SC("getconsttable"),base_getconsttable,1, NULL},
-    {_SC("setconsttable"),base_setconsttable,2, NULL},
-    {_SC("assert"),base_assert,-2, NULL},
-    {_SC("print"),base_print,2, NULL},
-    {_SC("error"),base_error,2, NULL},
-    {_SC("compilestring"),base_compilestring,-2, _SC(".ss")},
-    {_SC("newthread"),base_newthread,2, _SC(".c")},
-    {_SC("suspend"),base_suspend,-1, NULL},
-    {_SC("array"),base_array,-2, _SC(".n")},
-    {_SC("type"),base_type,2, NULL},
-    {_SC("callee"),base_callee,0,NULL},
-    {_SC("dummy"),base_dummy,0,NULL},
+    {_SC("seterrorhandler"),base_seterrorhandler, 2, NULL},
+    {_SC("setdebughook"),base_setdebughook, 2, NULL},
+    {_SC("enabledebuginfo"),base_enabledebuginfo, 2, NULL},
+    {_SC("getstackinfos"),base_getstackinfos, 2, _SC(".n")},
+    {_SC("getroottable"),base_getroottable, 1, NULL},
+    {_SC("setroottable"),base_setroottable, 2, NULL},
+    {_SC("getconsttable"),base_getconsttable, 1, NULL},
+    {_SC("setconsttable"),base_setconsttable, 2, NULL},
+    {_SC("assert"),base_assert, -2, NULL},
+    {_SC("print"),base_print, 2, NULL},
+    {_SC("error"),base_error, 2, NULL},
+    {_SC("compilestring"),base_compilestring, -2, ".ss"},
+    {_SC("newthread"),base_newthread, 2, ".c"},
+    {_SC("suspend"),base_suspend, -1, NULL},
+    {_SC("array"),base_array, -2, ".n"},
+    {_SC("type"),base_type, 2, NULL},
+    {_SC("callee"),base_callee, 0, NULL},
+    {_SC("dummy"),base_dummy, 0, NULL},
 #ifndef NO_GARBAGE_COLLECTOR
-    {_SC("collectgarbage"),base_collectgarbage,0, NULL},
-    {_SC("resurrectunreachable"),base_resurectureachable,0, NULL},
+    {_SC("collectgarbage"),base_collectgarbage, 0, NULL},
+    {_SC("resurrectunreachable"),base_resurectureachable, 0, NULL},
 #endif
     {NULL,(SQFUNCTION)0,0,NULL}
 };
 
-void sq_base_register(HSQUIRRELVM v)
-{
-    SQInteger i=0;
+void sq_base_register(HSQUIRRELVM v) {
+    SQInteger i = 0;
     sq_pushroottable(v);
-    while(base_funcs[i].name!=0) {
-        sq_pushstring(v,base_funcs[i].name,-1);
-        sq_newclosure(v,base_funcs[i].f,0);
-        sq_setnativeclosurename(v,-1,base_funcs[i].name);
-        sq_setparamscheck(v,base_funcs[i].nparamscheck,base_funcs[i].typemask);
-        sq_newslot(v,-3, SQFalse);
+    while (base_funcs[i].name != 0) {
+        sq_pushstring(v, base_funcs[i].name, -1);
+        sq_newclosure(v, base_funcs[i].f, 0);
+        sq_setnativeclosurename(v, -1, base_funcs[i].name);
+        sq_setparamscheck(v, base_funcs[i].nparamscheck, base_funcs[i].typemask);
+        sq_newslot(v, -3, SQFalse);
         i++;
     }
 
-    sq_pushstring(v,_SC("_versionnumber_"),-1);
-    sq_pushinteger(v,SQUIRREL_VERSION_NUMBER);
-    sq_newslot(v,-3, SQFalse);
-    sq_pushstring(v,_SC("_version_"),-1);
-    sq_pushstring(v,SQUIRREL_VERSION,-1);
-    sq_newslot(v,-3, SQFalse);
-    sq_pushstring(v,_SC("_charsize_"),-1);
-    sq_pushinteger(v,sizeof(SQChar));
-    sq_newslot(v,-3, SQFalse);
-    sq_pushstring(v,_SC("_intsize_"),-1);
-    sq_pushinteger(v,sizeof(SQInteger));
-    sq_newslot(v,-3, SQFalse);
-    sq_pushstring(v,_SC("_floatsize_"),-1);
-    sq_pushinteger(v,sizeof(SQFloat));
-    sq_newslot(v,-3, SQFalse);
+    sq_pushstring(v, "_versionnumber_", -1);
+    sq_pushinteger(v, SQUIRREL_VERSION_NUMBER);
+    sq_newslot(v, -3, SQFalse);
+    sq_pushstring(v, "_version_", -1);
+    sq_pushstring(v, SQUIRREL_VERSION, -1);
+    sq_newslot(v, -3, SQFalse);
+    sq_pushstring(v, "_charsize_", -1);
+    sq_pushinteger(v, sizeof(SQChar));
+    sq_newslot(v, -3, SQFalse);
+    sq_pushstring(v, "_intsize_", -1);
+    sq_pushinteger(v, sizeof(SQInteger));
+    sq_newslot(v, -3, SQFalse);
+    sq_pushstring(v, "_floatsize_", -1);
+    sq_pushinteger(v, sizeof(SQFloat));
+    sq_newslot(v, -3, SQFalse);
     sq_pop(v,1);
 }
 

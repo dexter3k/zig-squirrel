@@ -113,10 +113,11 @@ void sq_setdebughook(HSQUIRRELVM v)
     }
 }
 
-void sq_close(HSQUIRRELVM v)
-{
-    SQSharedState *ss = _ss(v);
+void sq_close(HSQUIRRELVM v) {
+    SQSharedState * ss = v->_sharedstate;
+
     _thread(ss->_root_vm)->Finalize();
+
     ss->~SQSharedState();
     sq_vm_free(ss, sizeof(SQSharedState));
 }

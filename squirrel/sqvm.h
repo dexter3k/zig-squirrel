@@ -58,7 +58,7 @@ public:
     enum ExecutionType { ET_CALL, ET_RESUME_GENERATOR, ET_RESUME_VM,ET_RESUME_THROW_VM };
     SQVM(SQSharedState *ss);
     ~SQVM();
-    bool Init(SQVM *friendvm, SQInteger stacksize);
+    bool Init(SQVM *friendvm, size_t stacksize);
     bool Execute(SQObjectPtr &func, SQInteger nargs, SQInteger stackbase, SQObjectPtr &outres, SQBool raiseerror, ExecutionType et = ET_CALL);
     //starts a native call return when the NATIVE closure returns
     bool CallNative(SQNativeClosure *nclosure, SQInteger nargs, SQInteger newbase, SQObjectPtr &retval, SQInt32 target, bool &suspend,bool &tailcall);

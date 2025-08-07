@@ -11,7 +11,6 @@
 #include "sqclass.h"
 #include "sqclosure.h"
 
-
 const SQChar *IdType2Name(SQObjectType type)
 {
     switch(_RAW_TYPE(type))
@@ -127,39 +126,49 @@ bool SQDelegable::SetDelegate(SQTable *mt)
     return true;
 }
 
-bool SQGenerator::Yield(SQVM *v,SQInteger target)
-{
-    if(_state==eSuspended) { v->Raise_Error(_SC("internal vm error, yielding dead generator"));  return false;}
-    if(_state==eDead) { v->Raise_Error(_SC("internal vm error, yielding a dead generator")); return false; }
-    SQInteger size = v->_top-v->_stackbase;
-
-    _stack.resize(size);
-    SQObject _this = v->_stack[v->_stackbase];
-    _stack._vals[0] = ISREFCOUNTED(sq_type(_this)) ? SQObjectPtr(_refcounted(_this)->GetWeakRef(sq_type(_this))) : _this;
-    for(SQInteger n =1; n<target; n++) {
-        _stack._vals[n] = v->_stack[v->_stackbase+n];
+bool SQGenerator::Yield(SQVM *v, SQInteger target) {
+    if (_state == eSuspended) {
+        v->Raise_Error("internal vm error, yielding dead generator");
+        return false;
     }
-    for(SQInteger j =0; j < size; j++)
-    {
-        v->_stack[v->_stackbase+j].Null();
+    if (_state == eDead) {
+        v->Raise_Error(_SC("internal vm error, yielding a dead generator"));
+        return false;
+    }
+
+    SQInteger size = v->_top - v->_stackbase;
+    _stack.resize(size);
+
+    SQObject _this = v->_stack[v->_stackbase];
+    _stack._vals[0] = ISREFCOUNTED(sq_type(_this))
+        ? SQObjectPtr(_refcounted(_this)->GetWeakRef(sq_type(_this)))
+        : _this;
+
+    // TODO: fix <=, see yield codegen in the compiler
+    for (SQInteger n = 1; n <= target; n++) {
+        _stack._vals[n] = v->_stack[v->_stackbase + n];
+    }
+
+    for (SQInteger j = 0; j < size; j++) {
+        v->_stack[v->_stackbase + j].Null();
     }
 
     _ci = *v->ci;
-    _ci._generator=NULL;
-    for(SQInteger i=0;i<_ci._etraps;i++) {
+    _ci._generator = NULL;
+    for (SQInteger i = 0; i < _ci._etraps; i++) {
         _etraps.push_back(v->_etraps.top());
         v->_etraps.pop_back();
         // store relative stack base and size in case of resume to other _top
-        SQExceptionTrap &et = _etraps.back();
+        SQExceptionTrap & et = _etraps.back();
         et._stackbase -= v->_stackbase;
         et._stacksize -= v->_stackbase;
     }
-    _state=eSuspended;
+
+    _state = eSuspended;
     return true;
 }
 
-bool SQGenerator::Resume(SQVM *v,SQObjectPtr &dest)
-{
+bool SQGenerator::Resume(SQVM *v, SQObjectPtr & dest) {
     if(_state==eDead){ v->Raise_Error(_SC("resuming dead generator")); return false; }
     if(_state==eRunning){ v->Raise_Error(_SC("resuming active generator")); return false; }
     SQInteger size = _stack.size();
