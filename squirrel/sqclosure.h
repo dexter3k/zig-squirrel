@@ -45,7 +45,7 @@ public:
 
     ~SQClosure();
 
-    void Release(){
+    void Release() {
         for (SQInteger i = 0; i < _function->_noutervalues; i++) {
             _outervalues[i].~SQObjectPtr();
         }
@@ -96,31 +96,34 @@ public:
 };
 
 //////////////////////////////////////////////
-struct SQOuter : public CHAINABLE_OBJ
-{
-
+struct SQOuter : public CHAINABLE_OBJ {
 private:
-    SQOuter(SQSharedState *ss, SQObjectPtr *outer){_valptr = outer; _next = NULL; INIT_CHAIN(); ADD_TO_CHAIN(&_ss(this)->_gc_chain,this); }
-
+    SQOuter(SQSharedState *ss, SQObjectPtr *outer) {
+        _valptr = outer;
+        _next = NULL;
+        INIT_CHAIN();
+        ADD_TO_CHAIN(&_ss(this)->_gc_chain,this);
+    }
 public:
-    static SQOuter *Create(SQSharedState *ss, SQObjectPtr *outer)
-    {
+    static SQOuter *Create(SQSharedState *ss, SQObjectPtr *outer) {
         SQOuter *nc  = (SQOuter*)sq_vm_malloc(sizeof(SQOuter));
         new (nc) SQOuter(ss, outer);
         return nc;
     }
-    ~SQOuter() { REMOVE_FROM_CHAIN(&_ss(this)->_gc_chain,this); }
 
-    void Release()
-    {
+    ~SQOuter() {
+        REMOVE_FROM_CHAIN(&_ss(this)->_gc_chain,this);
+    }
+
+    void Release() {
         this->~SQOuter();
         sq_vm_free(this,sizeof(SQOuter));
     }
 
 #ifndef NO_GARBAGE_COLLECTOR
-    void Mark(SQCollectable **chain);
+    void Mark(SQCollectable ** chain);
     void Finalize() { _value.Null(); }
-    SQObjectType GetType() {return OT_OUTER;}
+    SQObjectType GetType() { return OT_OUTER; }
 #endif
 
     SQObjectPtr *_valptr;  /* pointer to value on stack, or _value below */
@@ -175,7 +178,14 @@ public:
 struct SQNativeClosure : public CHAINABLE_OBJ
 {
 private:
-    SQNativeClosure(SQSharedState *ss,SQFUNCTION func){_function=func;INIT_CHAIN();ADD_TO_CHAIN(&_ss(this)->_gc_chain,this); _env = NULL;}
+    SQNativeClosure(SQSharedState *ss, SQFUNCTION func)
+        : _name()
+    {
+        _function = func;
+        INIT_CHAIN();
+        ADD_TO_CHAIN(&_ss(this)->_gc_chain,this);
+        _env = NULL;
+    }
 public:
     static SQNativeClosure *Create(SQSharedState *ss,SQFUNCTION func,SQInteger nouters)
     {
@@ -198,17 +208,19 @@ public:
         ret->_nparamscheck = _nparamscheck;
         return ret;
     }
-    ~SQNativeClosure()
-    {
+
+    ~SQNativeClosure() {
         __ObjRelease(_env);
         _env = nullptr;
         REMOVE_FROM_CHAIN(&_ss(this)->_gc_chain,this);
+        _name.Null();
     }
-    void Release(){
+
+    void Release() {
         SQInteger size = _CALC_NATVIVECLOSURE_SIZE(_noutervalues);
         _DESTRUCT_VECTOR(SQObjectPtr,_noutervalues,_outervalues);
         this->~SQNativeClosure();
-        sq_free(this,size);
+        sq_free(this, size);
     }
 
 #ifndef NO_GARBAGE_COLLECTOR

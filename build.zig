@@ -41,6 +41,7 @@ pub fn build(b: *std.Build) void {
             // "-Wcast-align",
             "-Wstrict-aliasing",
             "-fno-strict-aliasing",
+            "-g",
         },
     });
     const squirrel_lib = b.addLibrary(.{
@@ -80,6 +81,7 @@ pub fn build(b: *std.Build) void {
             // "-Wcast-align",
             "-Wstrict-aliasing",
             "-fno-strict-aliasing",
+            "-g",
         },
     });
     const sqstdlib_lib = b.addLibrary(.{
@@ -113,6 +115,7 @@ pub fn build(b: *std.Build) void {
             // "-Wcast-align",
             "-Wstrict-aliasing",
             "-fno-strict-aliasing",
+            "-g",
         },
     });
     sq_exe_mod.linkLibrary(squirrel_lib);

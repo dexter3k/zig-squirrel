@@ -260,16 +260,44 @@ const squirrel = @import("squirrel.zig");
 const Squirrel = squirrel.Squirrel(u32, f32, false);
 const Gc = @import("Gc.zig");
 
-fn pg() !void {
-    var debug_allocator: std.heap.DebugAllocator(.{}) = .init;
-    defer _ = debug_allocator.deinit();
-    const gpa = debug_allocator.allocator();
+var debug_allocator: std.heap.DebugAllocator(.{}) = .init;
+const gpa = debug_allocator.allocator();
 
+export fn sq_vm_malloc(size: usize) ?[*]u8 {
+    if (size == 0) {
+        return null;
+    }
+    return gpa.rawAlloc(size, .@"8", @returnAddress()) orelse unreachable;
+}
+
+export fn sq_vm_realloc(p: [*]u8, old_size: usize, size: usize) [*]u8 {
+    // std.debug.print("sq_vm_realloc {d} -> {d}\n", .{ old_size, size });
+
+    const new_ptr = sq_vm_malloc(size) orelse unreachable;
+    if (old_size == 0) {
+        return new_ptr;
+    }
+    @memcpy(new_ptr[0..old_size], p[0..old_size]);
+    @memset(p[0..old_size], undefined);
+    sq_vm_free(p, old_size);
+    return new_ptr;
+}
+
+export fn sq_vm_free(p: [*]u8, size: usize) void {
+    if (size == 0) {
+        return;
+    }
+    gpa.rawFree(p[0..size], .@"8", @returnAddress());
+}
+
+fn pg() !void {
     const gc: *Gc = try .init(gpa);
     defer gc.deinit();
 }
 
-pub fn main() !void {
+pub fn main() !u8 {
+    defer _ = debug_allocator.deinit();
+
     try pg();
 
     // Fix console output on Windows
@@ -312,5 +340,5 @@ pub fn main() !void {
         interactive(vm);
     }
 
-    std.c.exit(@intCast(ret));
+    return @bitCast(@as(i8, @intCast(ret)));
 }

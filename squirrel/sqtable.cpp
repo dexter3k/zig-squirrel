@@ -205,9 +205,12 @@ bool SQTable::Set(const SQObjectPtr &key, const SQObjectPtr &val)
     return false;
 }
 
-void SQTable::_ClearNodes()
-{
-    for(SQInteger i = 0;i < _numofnodes; i++) { _HashNode &n = _nodes[i]; n.key.Null(); n.val.Null(); }
+void SQTable::_ClearNodes() {
+    for (SQInteger i = 0; i < _numofnodes; i++) {
+        _HashNode &n = _nodes[i];
+        n.key.Null();
+        n.val.Null();
+    }
 }
 
 void SQTable::Finalize()

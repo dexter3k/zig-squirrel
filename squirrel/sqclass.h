@@ -146,9 +146,13 @@ public:
     }
     void Release() {
         _uiRef++;
-        if (_hook) { _hook(_userpointer,0);}
+        if (_hook) {
+            _hook(_userpointer, 0);
+        }
         _uiRef--;
-        if(_uiRef > 0) return;
+        if (_uiRef > 0) {
+            return;
+        }
         SQInteger size = _memsize;
         this->~SQInstance();
         sq_vm_free(this, size);

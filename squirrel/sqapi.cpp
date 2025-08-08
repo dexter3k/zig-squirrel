@@ -1316,7 +1316,7 @@ SQRESULT sq_resurrectunreachable(HSQUIRRELVM v)
 SQInteger sq_collectgarbage(HSQUIRRELVM v)
 {
 #ifndef NO_GARBAGE_COLLECTOR
-    return _ss(v)->CollectGarbage(v);
+    return v->_sharedstate->CollectGarbage();
 #else
     return -1;
 #endif

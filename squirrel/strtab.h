@@ -115,6 +115,7 @@ public:
             if (s != bs) {
                 prev = s;
                 s = s->_next;
+                continue;
             }
             
             if (prev) {

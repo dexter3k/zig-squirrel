@@ -22,12 +22,16 @@ inline SQHash HashObj(const SQObject &key)
     }
 }
 
-struct SQTable : public SQDelegable
-{
+struct SQTable : public SQDelegable {
 private:
-    struct _HashNode
-    {
-        _HashNode() { next = NULL; }
+    struct _HashNode {
+        // wait, so val and key are undefined??????
+        _HashNode()
+            : val()
+            , key()
+        {
+            next = NULL;
+        }
         SQObjectPtr val;
         SQObjectPtr key;
         _HashNode *next;
@@ -52,11 +56,12 @@ public:
     }
     void Finalize();
     SQTable *Clone();
-    ~SQTable()
-    {
+    ~SQTable() {
         SetDelegate(NULL);
         REMOVE_FROM_CHAIN(&_sharedstate->_gc_chain, this);
-        for (SQInteger i = 0; i < _numofnodes; i++) _nodes[i].~_HashNode();
+        for (SQInteger i = 0; i < _numofnodes; i++) {
+            _nodes[i].~_HashNode();
+        }
         sq_vm_free(_nodes, _numofnodes * sizeof(_HashNode));
     }
 #ifndef NO_GARBAGE_COLLECTOR

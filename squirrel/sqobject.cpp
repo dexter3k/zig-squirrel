@@ -69,24 +69,23 @@ SQInteger SQString::Next(const SQObjectPtr &refpos, SQObjectPtr &outkey, SQObjec
     return -1;
 }
 
-SQUnsignedInteger TranslateIndex(const SQObjectPtr &idx)
-{
-    switch(sq_type(idx)){
-        case OT_NULL:
-            return 0;
-        case OT_INTEGER:
-            return (SQUnsignedInteger)_integer(idx);
-        default: assert(0); break;
+SQUnsignedInteger TranslateIndex(SQObjectPtr const & idx) {
+    switch(sq_type(idx)) {
+    case OT_NULL:
+        return 0;
+    case OT_INTEGER:
+        return (SQUnsignedInteger)_integer(idx);
+    default: assert(0); break;
     }
     return 0;
 }
 
-SQWeakRef *SQRefCounted::GetWeakRef(SQObjectType type)
-{
+SQWeakRef *SQRefCounted::GetWeakRef(SQObjectType type) {
     if(!_weakref) {
         _weakref = (SQWeakRef *)sq_vm_malloc(sizeof(SQWeakRef));
         new (_weakref) SQWeakRef;
 
+        // Why, though? Leftover bits will never be accessed anyways...?
 #if defined(SQUSEDOUBLE) && !defined(_SQ64)
         _weakref->_obj._unVal.raw = 0; //clean the whole union on 32 bits with double
 #endif
@@ -97,9 +96,8 @@ SQWeakRef *SQRefCounted::GetWeakRef(SQObjectType type)
     return _weakref;
 }
 
-SQRefCounted::~SQRefCounted()
-{
-    if(_weakref) {
+SQRefCounted::~SQRefCounted() {
+    if (_weakref) {
         _weakref->_obj._type = OT_NULL;
         _weakref->_obj._unVal.pRefCounted = NULL;
     }
@@ -660,19 +658,20 @@ void SQNativeClosure::Mark(SQCollectable **chain)
     END_MARK()
 }
 
-void SQOuter::Mark(SQCollectable **chain)
-{
+void SQOuter::Mark(SQCollectable **chain) {
     START_MARK()
     /* If the valptr points to a closed value, that value is alive */
     if(_valptr == &_value) {
-      SQSharedState::MarkObject(_value, chain);
+        SQSharedState::MarkObject(_value, chain);
     }
     END_MARK()
 }
 
 void SQUserData::Mark(SQCollectable **chain){
     START_MARK()
-        if(_delegate) _delegate->Mark(chain);
+        if(_delegate) {
+            _delegate->Mark(chain);
+        }
     END_MARK()
 }
 

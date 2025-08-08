@@ -132,7 +132,7 @@ void SQSharedState::Init() {
 }
 
 SQSharedState::~SQSharedState() {
-    if(_releasehook) {
+    if (_releasehook) {
         _releasehook(_foreignptr, 0);
         _releasehook = NULL;
     }
@@ -145,10 +145,12 @@ SQSharedState::~SQSharedState() {
     _consts.Null();
     _metamethodsmap.Null();
 
-    while (!_systemstrings.empty()) {
-        _systemstrings.back().Null();
-        _systemstrings.pop_back();
-    }
+    // TODO: is there really a reason to do this?
+    // Simply running sqvector destructor shall be equal
+    // Answer: we can't directly leave this to RAII
+    // because deletion of strings relies on this class
+    // and will be launched after this destructor exits
+    _systemstrings.resize(0);
 
     _thread(_root_vm)->Finalize();
     _root_vm.Null();
@@ -164,26 +166,37 @@ SQSharedState::~SQSharedState() {
     _weakref_default_delegate.Null();
     _refs_table.Finalize();
 #ifndef NO_GARBAGE_COLLECTOR
-    SQCollectable *t = _gc_chain;
-    SQCollectable *nx = NULL;
-    if(t) {
+    SQCollectable * t = _gc_chain;
+    SQCollectable * nx = NULL;
+    if (t) {
         t->_uiRef++;
-        while(t) {
+        while (t) {
             t->Finalize();
+
             nx = t->_next;
-            if(nx) nx->_uiRef++;
-            if(--t->_uiRef == 0)
+            if (nx) {
+                nx->_uiRef++;
+            }
+
+            t->_uiRef--;
+            if (t->_uiRef == 0) {
                 t->Release();
+            }
+
             t = nx;
         }
     }
-    assert(_gc_chain==NULL); //just to proove a theory
-    while(_gc_chain){
+    assert(_gc_chain == NULL);
+    while (_gc_chain) {
         _gc_chain->_uiRef++;
         _gc_chain->Release();
     }
 #endif
-    if(_scratchpad)sq_vm_free(_scratchpad,_scratchpadsize);
+    if (_scratchpad) {
+        sq_vm_free(_scratchpad, _scratchpadsize);
+    }
+
+    _metamethods.resize(0);
 }
 
 
@@ -200,27 +213,48 @@ SQInteger SQSharedState::GetMetaMethodIdxByName(const SQObjectPtr &name)
 
 #ifndef NO_GARBAGE_COLLECTOR
 
-void SQSharedState::MarkObject(SQObjectPtr &o,SQCollectable **chain)
-{
-    switch(sq_type(o)){
-    case OT_TABLE:_table(o)->Mark(chain);break;
-    case OT_ARRAY:_array(o)->Mark(chain);break;
-    case OT_USERDATA:_userdata(o)->Mark(chain);break;
-    case OT_CLOSURE:_closure(o)->Mark(chain);break;
-    case OT_NATIVECLOSURE:_nativeclosure(o)->Mark(chain);break;
-    case OT_GENERATOR:_generator(o)->Mark(chain);break;
-    case OT_THREAD:_thread(o)->Mark(chain);break;
-    case OT_CLASS:_class(o)->Mark(chain);break;
-    case OT_INSTANCE:_instance(o)->Mark(chain);break;
-    case OT_OUTER:_outer(o)->Mark(chain);break;
-    case OT_FUNCPROTO:_funcproto(o)->Mark(chain);break;
-    default: break; //shutup compiler
+void SQSharedState::MarkObject(SQObjectPtr & o,SQCollectable ** chain) {
+    switch (sq_type(o)) {
+    case OT_TABLE:
+        _table(o)->Mark(chain);
+        break;
+    case OT_ARRAY:
+        _array(o)->Mark(chain);
+        break;
+    case OT_USERDATA:
+        _userdata(o)->Mark(chain);
+        break;
+    case OT_CLOSURE:
+        _closure(o)->Mark(chain);
+        break;
+    case OT_NATIVECLOSURE:
+        _nativeclosure(o)->Mark(chain);
+        break;
+    case OT_GENERATOR:
+        _generator(o)->Mark(chain);
+        break;
+    case OT_THREAD:
+        _thread(o)->Mark(chain);
+        break;
+    case OT_CLASS:
+        _class(o)->Mark(chain);
+        break;
+    case OT_INSTANCE:
+        _instance(o)->Mark(chain);
+        break;
+    case OT_OUTER:
+        _outer(o)->Mark(chain);
+        break;
+    case OT_FUNCPROTO:
+        _funcproto(o)->Mark(chain);
+        break;
+    default:
+        break; //shutup compiler
     }
 }
 
-void SQSharedState::RunMark(SQVM* SQ_UNUSED_ARG(vm),SQCollectable **tchain)
-{
-    SQVM *vms = _thread(_root_vm);
+void SQSharedState::RunMark(SQCollectable ** tchain) {
+    SQVM * vms = _thread(_root_vm);
 
     vms->Mark(tchain);
 
@@ -238,13 +272,12 @@ void SQSharedState::RunMark(SQVM* SQ_UNUSED_ARG(vm),SQCollectable **tchain)
     MarkObject(_class_default_delegate,tchain);
     MarkObject(_instance_default_delegate,tchain);
     MarkObject(_weakref_default_delegate,tchain);
-
 }
 
 void SQSharedState::ResurrectUnreachable(SQVM * vm) {
-    SQCollectable *tchain=NULL;
+    SQCollectable * tchain = NULL;
 
-    RunMark(vm,&tchain);
+    RunMark(&tchain);
 
     SQCollectable *resurrected = _gc_chain;
     SQCollectable *t = resurrected;
@@ -291,12 +324,11 @@ void SQSharedState::ResurrectUnreachable(SQVM * vm) {
     }
 }
 
-SQInteger SQSharedState::CollectGarbage(SQVM *vm)
-{
+SQInteger SQSharedState::CollectGarbage() {
     SQInteger n = 0;
     SQCollectable *tchain = NULL;
 
-    RunMark(vm,&tchain);
+    RunMark(&tchain);
 
     SQCollectable *t = _gc_chain;
     SQCollectable *nx = NULL;
@@ -305,9 +337,12 @@ SQInteger SQSharedState::CollectGarbage(SQVM *vm)
         while(t) {
             t->Finalize();
             nx = t->_next;
-            if(nx) nx->_uiRef++;
-            if(--t->_uiRef == 0)
+            if (nx) nx->_uiRef++;
+            t->_uiRef--;
+            // And why would that be non zero?
+            if(t->_uiRef == 0) {
                 t->Release();
+            }
             t = nx;
             n++;
         }

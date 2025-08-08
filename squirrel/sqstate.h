@@ -47,7 +47,6 @@ public:
     SQSharedState()
         : _metamethods()
         , _systemstrings()
-        , _types()
         , _stringtable(this)
 #ifndef NO_GARBAGE_COLLECTOR
         , _gc_chain(nullptr)
@@ -71,8 +70,8 @@ public:
     SQInteger GetMetaMethodIdxByName(const SQObjectPtr &name);
 
 #ifndef NO_GARBAGE_COLLECTOR
-    SQInteger CollectGarbage(SQVM *vm);
-    void RunMark(SQVM *vm,SQCollectable **tchain);
+    SQInteger CollectGarbage();
+    void RunMark(SQCollectable **tchain);
     void ResurrectUnreachable(SQVM * vm);
     static void MarkObject(SQObjectPtr &o,SQCollectable **chain);
 #endif
@@ -80,7 +79,6 @@ public:
     sqvector<SQObjectPtr> _metamethods;
     SQObjectPtr _metamethodsmap;
     sqvector<SQObjectPtr> _systemstrings;
-    sqvector<SQObjectPtr> _types;
     SQStringTable _stringtable;
     RefTable _refs_table;
     SQObjectPtr _registry;

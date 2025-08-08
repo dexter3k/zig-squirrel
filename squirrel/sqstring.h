@@ -14,16 +14,13 @@ inline SQHash _hashstr (const SQChar *s, size_t l)
 	return h;
 }
 
-struct SQString : public SQRefCounted
-{
-    SQString(){}
-    ~SQString(){}
+struct SQString : public SQRefCounted {
 public:
     static SQString *Create(SQSharedState *ss, const SQChar *, SQInteger len = -1 );
     static SQString* Concat(SQSharedState* ss, const SQChar* a, SQInteger alen, const SQChar* b, SQInteger blen);
 
     SQInteger Next(const SQObjectPtr &refpos, SQObjectPtr &outkey, SQObjectPtr &outval);
-    void Release();
+    void Release() override;
 
     SQSharedState *_sharedstate;
     SQString *_next; //chain for the string table

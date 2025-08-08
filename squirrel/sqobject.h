@@ -95,6 +95,10 @@ struct SQRefCounted {
 
     SQWeakRef * GetWeakRef(SQObjectType type);
 
+    // User must implement release to
+    // 1. Call destructor and release others
+    //  - this is important, because this invalidates weakrefs!
+    // 2. Free memory for itself
     virtual void Release() = 0;
 };
 
@@ -102,6 +106,9 @@ struct SQWeakRef : SQRefCounted {
     SQObject _obj;
 
     void Release() {
+        // I mean yeah, but also..
+        // how do we have a weakref to non-refcounted?
+        // * it can become NULL
         if (ISREFCOUNTED(_obj._type)) {
             _obj._unVal.pRefCounted->_weakref = NULL;
         }
@@ -172,7 +179,7 @@ static inline void __ObjAddRef(SQRefCounted * rc) {
         _unVal.raw = 0; \
         _type=type; \
         _unVal.sym = x; \
-        assert(_unVal.pTable); \
+        assert(_unVal.sym); \
         _unVal.pRefCounted->_uiRef++; \
     } \
     inline SQObjectPtr& operator=(_class *x) \
@@ -206,16 +213,29 @@ static inline void __ObjAddRef(SQRefCounted * rc) {
     }
 
 struct SQObjectPtr : public SQObject {
-    SQObjectPtr() { _type = OT_NULL; _unVal.raw = 0; }
+    /*
+        Essentially an automatic reference manager for SQObject
+    */
+
+    SQObjectPtr() {
+        _type = OT_NULL;
+        _unVal.raw = 0;
+    }
 
     SQObjectPtr(SQObjectPtr const & o) {
-        _type = o._type; _unVal = o._unVal;
-        if (ISREFCOUNTED(_type)) { _unVal.pRefCounted->_uiRef++; }
+        _type = o._type;
+        _unVal = o._unVal;
+        if (ISREFCOUNTED(_type)) {
+            _unVal.pRefCounted->_uiRef++;
+        }
     }
 
     SQObjectPtr(SQObject const & o) {
-        _type = o._type; _unVal = o._unVal;
-        if (ISREFCOUNTED(_type)) { _unVal.pRefCounted->_uiRef++; }
+        _type = o._type;
+        _unVal = o._unVal;
+        if (ISREFCOUNTED(_type)) {
+            _unVal.pRefCounted->_uiRef++;
+        }
     }
 
     _REF_TYPE_DECL(OT_TABLE,SQTable,pTable)
@@ -339,9 +359,9 @@ struct SQCollectable : public SQRefCounted {
     SQCollectable *_next;
     SQCollectable *_prev;
     SQSharedState *_sharedstate;
-    virtual SQObjectType GetType()=0;
-    virtual void Release()=0;
-    virtual void Mark(SQCollectable **chain)=0;
+    virtual SQObjectType GetType() = 0;
+    virtual void Release() = 0;
+    virtual void Mark(SQCollectable **chain) = 0;
     void UnMark();
     virtual void Finalize()=0;
     static void AddToChain(SQCollectable **chain,SQCollectable *c);
