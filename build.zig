@@ -31,6 +31,9 @@ pub fn build(b: *std.Build) void {
             "sqmem.c",
             "sqvm.cpp",
             "sqclass.cpp",
+
+            "SQDelegable.cpp",
+            "SQDelegable.hpp",
         },
         .flags = &.{
             "-Wall",
@@ -41,7 +44,7 @@ pub fn build(b: *std.Build) void {
             // "-Wcast-align",
             "-Wstrict-aliasing",
             "-fno-strict-aliasing",
-            "-g",
+            "-ferror-limit=1",
         },
     });
     const squirrel_lib = b.addLibrary(.{
@@ -81,7 +84,7 @@ pub fn build(b: *std.Build) void {
             // "-Wcast-align",
             "-Wstrict-aliasing",
             "-fno-strict-aliasing",
-            "-g",
+            "-ferror-limit=1",
         },
     });
     const sqstdlib_lib = b.addLibrary(.{
@@ -115,7 +118,7 @@ pub fn build(b: *std.Build) void {
             // "-Wcast-align",
             "-Wstrict-aliasing",
             "-fno-strict-aliasing",
-            "-g",
+            "-ferror-limit=1",
         },
     });
     sq_exe_mod.linkLibrary(squirrel_lib);

@@ -2,6 +2,10 @@
 #ifndef _SQOBJECT_H_
 #define _SQOBJECT_H_
 
+#include <cassert>
+
+#include <squirrel.h>
+
 #include "squtils.h"
 
 #ifdef _SQ64
@@ -108,9 +112,9 @@ struct SQWeakRef : SQRefCounted {
     void Release() {
         // I mean yeah, but also..
         // how do we have a weakref to non-refcounted?
-        // * it can become NULL
+        // * it can become nullptr
         if (ISREFCOUNTED(_obj._type)) {
-            _obj._unVal.pRefCounted->_weakref = NULL;
+            _obj._unVal.pRefCounted->_weakref = nullptr;
         }
 
         this->~SQWeakRef();
@@ -372,7 +376,7 @@ struct SQCollectable : public SQRefCounted {
 #define ADD_TO_CHAIN(chain,obj) AddToChain(chain,obj)
 #define REMOVE_FROM_CHAIN(chain,obj) {if(!(_uiRef&MARK_FLAG))RemoveFromChain(chain,obj);}
 #define CHAINABLE_OBJ SQCollectable
-#define INIT_CHAIN() {_next=NULL;_prev=NULL;_sharedstate=ss;}
+#define INIT_CHAIN() {_next=nullptr;_prev=nullptr;_sharedstate=ss;}
 #else
 
 #define ADD_TO_CHAIN(chain,obj) ((void)0)
@@ -380,12 +384,6 @@ struct SQCollectable : public SQRefCounted {
 #define CHAINABLE_OBJ SQRefCounted
 #define INIT_CHAIN() ((void)0)
 #endif
-
-struct SQDelegable : public CHAINABLE_OBJ {
-    bool SetDelegate(SQTable *m);
-    virtual bool GetMetaMethod(SQVM *v,SQMetaMethod mm,SQObjectPtr &res);
-    SQTable *_delegate;
-};
 
 SQUnsignedInteger TranslateIndex(const SQObjectPtr &idx);
 const SQChar *GetTypeName(const SQObjectPtr &obj1);

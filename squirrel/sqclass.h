@@ -2,6 +2,8 @@
 #ifndef _SQCLASS_H_
 #define _SQCLASS_H_
 
+#include "SQDelegable.hpp"
+
 struct SQInstance;
 
 struct SQClassMember {

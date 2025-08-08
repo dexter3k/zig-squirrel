@@ -2,10 +2,15 @@
 #ifndef _SQUSERDATA_H_
 #define _SQUSERDATA_H_
 
+#include "SQDelegable.hpp"
+
 struct SQUserData : SQDelegable {
-    SQUserData(SQSharedState *ss) {
-        _delegate = 0;
-        _hook = NULL;
+    SQUserData(SQSharedState * ss)
+        : SQDelegable()
+        , _size(0)
+        , _hook(nullptr)
+        , _typetag(nullptr)
+    {
         INIT_CHAIN();
         ADD_TO_CHAIN(&_ss(this)->_gc_chain, this);
     }
@@ -17,8 +22,9 @@ struct SQUserData : SQDelegable {
 
     static SQUserData* Create(SQSharedState *ss, SQInteger size) {
         // sizeof(SQUserData) has to be already aligned, no?
+        // answer: yes, sizeof(Type) == k * alignof(Type), for some k >= 1
 
-        SQUserData* ud = (SQUserData*)sq_vm_malloc(sq_aligning(sizeof(SQUserData)) + size);
+        SQUserData* ud = (SQUserData*)sq_vm_malloc(sizeof(SQUserData) + size);
         new (ud) SQUserData(ss);
 
         ud->_size = size;
