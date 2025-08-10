@@ -7,7 +7,7 @@
 #include "sqclass.h"
 #include "sqfuncproto.h"
 #include "sqclosure.h"
-
+#include "SQInstance.hpp"
 
 
 SQClass::SQClass(SQSharedState *ss,SQClass *base)
@@ -144,75 +144,6 @@ bool SQClass::GetAttributes(const SQObjectPtr &key,SQObjectPtr &outval)
     if(_members->Get(key,idx)) {
         outval = (_isfield(idx)?_defaultvalues[_member_idx(idx)].attrs:_methods[_member_idx(idx)].attrs);
         return true;
-    }
-    return false;
-}
-
-///////////////////////////////////////////////////////////////////////
-void SQInstance::Init(SQSharedState *ss)
-{
-    _userpointer = NULL;
-    _hook = NULL;
-    __ObjAddRef(_class);
-    _delegate = _class->_members;
-    INIT_CHAIN();
-    ADD_TO_CHAIN(&_sharedstate->_gc_chain, this);
-}
-
-SQInstance::SQInstance(SQSharedState *ss, SQClass *c, SQInteger memsize)
-{
-    _memsize = memsize;
-    _class = c;
-    SQUnsignedInteger nvalues = _class->_defaultvalues.size();
-    for(SQUnsignedInteger n = 0; n < nvalues; n++) {
-        new (&_values[n]) SQObjectPtr(_class->_defaultvalues[n].val);
-    }
-    Init(ss);
-}
-
-SQInstance::SQInstance(SQSharedState *ss, SQInstance *i, SQInteger memsize)
-{
-    _memsize = memsize;
-    _class = i->_class;
-    SQUnsignedInteger nvalues = _class->_defaultvalues.size();
-    for(SQUnsignedInteger n = 0; n < nvalues; n++) {
-        new (&_values[n]) SQObjectPtr(i->_values[n]);
-    }
-    Init(ss);
-}
-
-void SQInstance::Finalize()
-{
-    SQUnsignedInteger nvalues = _class->_defaultvalues.size();
-    __ObjRelease(_class);
-    _class = nullptr;
-    _NULL_SQOBJECT_VECTOR(_values,nvalues);
-}
-
-SQInstance::~SQInstance() {
-    REMOVE_FROM_CHAIN(&_sharedstate->_gc_chain, this);
-    // if _class is null it was already finalized by the GC
-    if (_class) {
-        Finalize();
-    }
-}
-
-bool SQInstance::GetMetaMethod(SQVM* SQ_UNUSED_ARG(v),SQMetaMethod mm,SQObjectPtr &res)
-{
-    if(sq_type(_class->_metamethods[mm]) != OT_NULL) {
-        res = _class->_metamethods[mm];
-        return true;
-    }
-    return false;
-}
-
-bool SQInstance::InstanceOf(SQClass *trg)
-{
-    SQClass *parent = _class;
-    while(parent != NULL) {
-        if(parent == trg)
-            return true;
-        parent = parent->_base;
     }
     return false;
 }

@@ -4,6 +4,18 @@ pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
 
+    const base_c_flags: []const []const u8 = &.{
+        "-Wall",
+        "-Wextra",
+        "-Werror",
+        "-fno-exceptions",
+        "-fno-rtti",
+        // "-Wcast-align",
+        "-Wstrict-aliasing",
+        "-fno-strict-aliasing",
+        "-ferror-limit=1",
+    };
+
     // Main Squirrel lib
     const squirrel_lib_mod = b.createModule(.{
         .target = target,
@@ -32,20 +44,14 @@ pub fn build(b: *std.Build) void {
             "sqvm.cpp",
             "sqclass.cpp",
 
-            "SQDelegable.cpp",
             "SQDelegable.hpp",
+            "SQDelegable.cpp",
+            "SQInstance.hpp",
+            "SQInstance.cpp",
+            "SQUserData.hpp",
+            "SQUserData.cpp",
         },
-        .flags = &.{
-            "-Wall",
-            "-Wextra",
-            "-Werror",
-            "-fno-exceptions",
-            "-fno-rtti",
-            // "-Wcast-align",
-            "-Wstrict-aliasing",
-            "-fno-strict-aliasing",
-            "-ferror-limit=1",
-        },
+        .flags = base_c_flags,
     });
     const squirrel_lib = b.addLibrary(.{
         .linkage = .static,
@@ -75,17 +81,7 @@ pub fn build(b: *std.Build) void {
             "sqstdaux.cpp",
             "sqstdrex.cpp",
         },
-        .flags = &.{
-            "-Wall",
-            "-Wextra",
-            "-Werror",
-            "-fno-exceptions",
-            "-fno-rtti",
-            // "-Wcast-align",
-            "-Wstrict-aliasing",
-            "-fno-strict-aliasing",
-            "-ferror-limit=1",
-        },
+        .flags = base_c_flags,
     });
     const sqstdlib_lib = b.addLibrary(.{
         .linkage = .static,
@@ -109,17 +105,7 @@ pub fn build(b: *std.Build) void {
         .files = &.{
             "sq.c",
         },
-        .flags = &.{
-            "-Wall",
-            "-Wextra",
-            "-Werror",
-            "-fno-exceptions",
-            "-fno-rtti",
-            // "-Wcast-align",
-            "-Wstrict-aliasing",
-            "-fno-strict-aliasing",
-            "-ferror-limit=1",
-        },
+        .flags = base_c_flags,
     });
     sq_exe_mod.linkLibrary(squirrel_lib);
     sq_exe_mod.linkLibrary(sqstdlib_lib);

@@ -11,7 +11,8 @@
 #include "sqstring.h"
 #include "sqtable.h"
 #include "sqarray.h"
-#include "squserdata.h"
+#include "SQInstance.hpp"
+#include "SQUserData.hpp"
 #include "sqclass.h"
 
 bool CompileTypemask(sqvector<SQInteger> & res, SQChar const * typemask) {
@@ -36,7 +37,7 @@ bool CompileTypemask(sqvector<SQInteger> & res, SQChar const * typemask) {
             case 'y': mask |= _RT_CLASS; break;
             case 'r': mask |= _RT_WEAKREF; break;
             case '.': mask = -1; res.push_back(mask); i++; mask = 0; continue;
-            case ' ': i++; continue; //ignores spaces
+            case ' ': i++; continue; // ignores spaces
             default:
                 return false;
         }
@@ -379,29 +380,24 @@ void SQCollectable::RemoveFromChain(SQCollectable **chain,SQCollectable *c)
 }
 #endif
 
-SQChar* SQSharedState::GetScratchPad(SQInteger size)
-{
-    SQInteger newsize;
-    if (size > 0) {
-        if (_scratchpadsize < size) {
-            newsize = (SQInteger)((SQUnsignedInteger)size + (size >> 1));
-            newsize = std::max(newsize, size); //check for overflow
-            _scratchpad = (SQChar*)sq_vm_realloc(_scratchpad, _scratchpadsize, newsize);
-            _scratchpadsize = newsize;
+char * SQSharedState::GetScratchPad(size_t size) {
+    if (size == 0) {
+        return _scratchpad;
+    }
 
-        }
-        else if ((_scratchpadsize >> 5) >= size) {
-            newsize = _scratchpadsize >> 1;
-            newsize = std::max(newsize, size); //check for overflow
-            _scratchpad = (SQChar*)sq_vm_realloc(_scratchpad, _scratchpadsize, newsize);
-            _scratchpadsize = newsize;
-        }
+    if (_scratchpadsize < size) {
+        size_t const newsize = std::max(size + (size >> 1), size);
+        _scratchpad = (char*)sq_vm_realloc(_scratchpad, _scratchpadsize, newsize);
+        _scratchpadsize = newsize;
+    } else if (_scratchpadsize / 32 >= size) {
+        size_t const newsize = std::max(_scratchpadsize >> 1, size);
+        _scratchpad = (char*)sq_vm_realloc(_scratchpad, _scratchpadsize, newsize);
+        _scratchpadsize = newsize;
     }
     return _scratchpad;
 }
 
-RefTable::RefTable()
-{
+RefTable::RefTable() {
     AllocNodes(4);
 }
 

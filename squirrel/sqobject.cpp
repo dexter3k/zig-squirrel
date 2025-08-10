@@ -6,7 +6,8 @@
 #include "sqstring.h"
 #include "sqarray.h"
 #include "sqtable.h"
-#include "squserdata.h"
+#include "SQInstance.hpp"
+#include "SQUserData.hpp"
 #include "sqfuncproto.h"
 #include "sqclass.h"
 #include "sqclosure.h"
@@ -325,7 +326,7 @@ bool ReadObject(HSQUIRRELVM v,SQUserPointer up,SQREADFUNC read,SQObjectPtr &o)
         SQInteger len;
         _CHECK_IO(SafeRead(v,read,up,&len,sizeof(SQInteger)));
         _CHECK_IO(SafeRead(v,read,up,_ss(v)->GetScratchPad(sq_rsl(len)),sq_rsl(len)));
-        o=SQString::Create(_ss(v),_ss(v)->GetScratchPad(-1),len);
+        o=SQString::Create(_ss(v),_ss(v)->GetScratchPad(0),len);
                    }
         break;
     case OT_INTEGER:{
@@ -534,12 +535,6 @@ bool SQFunctionProto::Load(SQVM *v,SQUserPointer up,SQREADFUNC read,SQObjectPtr 
 
 #ifndef NO_GARBAGE_COLLECTOR
 
-#define START_MARK()    if(!(_uiRef&MARK_FLAG)){ \
-        _uiRef|=MARK_FLAG;
-
-#define END_MARK() RemoveFromChain(&_sharedstate->_gc_chain, this); \
-        AddToChain(chain, this); }
-
 void SQVM::Mark(SQCollectable **chain)
 {
     START_MARK()
@@ -592,17 +587,6 @@ void SQClass::Mark(SQCollectable **chain)
     END_MARK()
 }
 
-void SQInstance::Mark(SQCollectable **chain)
-{
-    START_MARK()
-        _class->Mark(chain);
-        SQUnsignedInteger nvalues = _class->_defaultvalues.size();
-        for(SQUnsignedInteger i =0; i< nvalues; i++) {
-            SQSharedState::MarkObject(_values[i], chain);
-        }
-    END_MARK()
-}
-
 void SQGenerator::Mark(SQCollectable **chain)
 {
     START_MARK()
@@ -643,14 +627,6 @@ void SQOuter::Mark(SQCollectable **chain) {
     if(_valptr == &_value) {
         SQSharedState::MarkObject(_value, chain);
     }
-    END_MARK()
-}
-
-void SQUserData::Mark(SQCollectable **chain){
-    START_MARK()
-        if(_delegate) {
-            _delegate->Mark(chain);
-        }
     END_MARK()
 }
 

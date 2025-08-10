@@ -4,6 +4,8 @@
 
 #include <cstdint>
 
+#include <squirrel.h>
+
 #define MAX_FUNC_STACKSIZE 0xFF
 #define MAX_LITERALS ((SQInteger)0x7FFFFFFF)
 

@@ -66,7 +66,7 @@ public:
 
     ~SQSharedState();
 
-    SQChar* GetScratchPad(SQInteger size);
+    char * GetScratchPad(size_t size);
     SQInteger GetMetaMethodIdxByName(const SQObjectPtr &name);
 
 #ifndef NO_GARBAGE_COLLECTOR
@@ -119,12 +119,12 @@ public:
     SQUserPointer _foreignptr;
     SQRELEASEHOOK _releasehook;
 private:
-    SQChar *_scratchpad;
-    SQInteger _scratchpadsize;
+    char *_scratchpad;
+    size_t _scratchpadsize;
 };
 
 #define _sp(s) (_sharedstate->GetScratchPad(s))
-#define _spval (_sharedstate->GetScratchPad(-1))
+#define _spval (_sharedstate->GetScratchPad(0))
 
 #define _table_ddel     _table(_sharedstate->_table_default_delegate)
 #define _array_ddel     _table(_sharedstate->_array_default_delegate)

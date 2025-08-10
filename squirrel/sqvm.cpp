@@ -10,7 +10,8 @@
 #include "sqclosure.h"
 #include "sqstring.h"
 #include "sqtable.h"
-#include "squserdata.h"
+#include "SQInstance.hpp"
+#include "SQUserData.hpp"
 #include "sqarray.h"
 #include "sqclass.h"
 
@@ -1474,7 +1475,8 @@ SQInteger SQVM::FallBackGet(const SQObjectPtr &self,const SQObjectPtr &key,SQObj
     case OT_INSTANCE: {
         SQObjectPtr closure;
         if(_delegable(self)->GetMetaMethod(this, MT_GET, closure)) {
-            Push(self);Push(key);
+            Push(self);
+            Push(key);
             _nmetamethodscall++;
             AutoDec ad(&_nmetamethodscall);
             if(Call(closure, 2, _top - 2, dest, SQFalse)) {

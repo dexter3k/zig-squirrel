@@ -175,8 +175,7 @@ public:
 
 #define _CALC_NATVIVECLOSURE_SIZE(noutervalues) (sizeof(SQNativeClosure) + (noutervalues*sizeof(SQObjectPtr)))
 
-struct SQNativeClosure : public CHAINABLE_OBJ
-{
+struct SQNativeClosure : public CHAINABLE_OBJ {
 private:
     SQNativeClosure(SQSharedState *ss, SQFUNCTION func)
         : _name()

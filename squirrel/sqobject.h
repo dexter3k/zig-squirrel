@@ -172,7 +172,7 @@ static inline void __ObjAddRef(SQRefCounted * rc) {
 #define _rawval(obj) ((obj)._unVal.raw)
 
 #define _stringval(obj) (obj)._unVal.pString->_val
-#define _userdataval(obj) ((SQUserPointer)sq_aligning((obj)._unVal.pUserData + 1))
+#define _userdataval(obj) (SQUserPointer((obj)._unVal.pUserData + 1))
 
 #define tofloat(num) ((sq_type(num)==OT_INTEGER)?(SQFloat)_integer(num):_float(num))
 #define tointeger(num) ((sq_type(num)==OT_FLOAT)?(SQInteger)_float(num):_integer(num))
@@ -268,12 +268,7 @@ struct SQObjectPtr : public SQObject {
     }
 
     ~SQObjectPtr() {
-        if (ISREFCOUNTED(_type)) {
-            _unVal.pRefCounted->_uiRef--;
-            if (_unVal.pRefCounted->_uiRef == 0) {
-                _unVal.pRefCounted->Release();
-            }
-        }
+        __Release(_type, _unVal);
     }
 
     inline void Null() {
@@ -358,7 +353,16 @@ inline void _Swap(SQObject &a,SQObject &b)
 
 /////////////////////////////////////////////////////////////////////////////////////
 #ifndef NO_GARBAGE_COLLECTOR
+
 #define MARK_FLAG 0x80000000
+
+#define START_MARK() if (!(_uiRef & MARK_FLAG)) { \
+                         _uiRef |= MARK_FLAG;
+
+#define END_MARK()       RemoveFromChain(&_sharedstate->_gc_chain, this); \
+                         AddToChain(chain, this); \
+                     }
+
 struct SQCollectable : public SQRefCounted {
     SQCollectable *_next;
     SQCollectable *_prev;

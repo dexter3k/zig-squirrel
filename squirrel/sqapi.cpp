@@ -8,7 +8,8 @@
 #include "sqarray.h"
 #include "sqfuncproto.h"
 #include "sqclosure.h"
-#include "squserdata.h"
+#include "SQInstance.hpp"
+#include "SQUserData.hpp"
 #include "sqcompiler.h"
 #include "sqfuncstate.h"
 #include "sqclass.h"
@@ -32,11 +33,10 @@ static bool sq_aux_gettypedarg(HSQUIRRELVM v,SQInteger idx,SQObjectType type,SQO
 }
 
 
-SQInteger sq_aux_invalidtype(HSQUIRRELVM v,SQObjectType type)
-{
-    SQUnsignedInteger buf_size = 100 *sizeof(SQChar);
-    scsprintf(_ss(v)->GetScratchPad(buf_size), buf_size, _SC("unexpected type %s"), IdType2Name(type));
-    return sq_throwerror(v, _ss(v)->GetScratchPad(-1));
+SQInteger sq_aux_invalidtype(HSQUIRRELVM v,SQObjectType type) {
+    size_t const buf_size = 100 * sizeof(SQChar);
+    snprintf(v->_sharedstate->GetScratchPad(buf_size), buf_size, "unexpected type %s", IdType2Name(type));
+    return sq_throwerror(v, _ss(v)->GetScratchPad(0));
 }
 
 HSQUIRRELVM sq_open(SQInteger initialstacksize) {
@@ -267,12 +267,10 @@ void sq_pushthread(HSQUIRRELVM v, HSQUIRRELVM thread)
     v->Push(thread);
 }
 
-SQUserPointer sq_newuserdata(HSQUIRRELVM v,SQUnsignedInteger size)
-{
-    // the + SQ_ALIGNMENT is unnecessary here?
-    SQUserData *ud = SQUserData::Create(_ss(v), size + SQ_ALIGNMENT);
+SQUserPointer sq_newuserdata(HSQUIRRELVM v, SQUnsignedInteger size) {
+    SQUserData *ud = SQUserData::Create(_ss(v), size);
     v->Push(ud);
-    return (SQUserPointer)sq_aligning(ud + 1);
+    return SQUserPointer(ud + 1);
 }
 
 void sq_newtable(HSQUIRRELVM v)
@@ -734,7 +732,7 @@ SQInteger sq_getsize(HSQUIRRELVM v, SQInteger idx)
     case OT_TABLE:      return _table(o)->CountUsed();
     case OT_ARRAY:      return _array(o)->Size();
     case OT_USERDATA:   return _userdata(o)->_size;
-    case OT_INSTANCE:   return _instance(o)->_class->_udsize;
+    case OT_INSTANCE:   return _instance(o)->klass->_udsize;
     case OT_CLASS:      return _class(o)->_udsize;
     default:
         return sq_aux_invalidtype(v, type);
@@ -770,7 +768,7 @@ SQRESULT sq_settypetag(HSQUIRRELVM v,SQInteger idx,SQUserPointer typetag)
 SQRESULT sq_getobjtypetag(const HSQOBJECT *o,SQUserPointer * typetag)
 {
   switch(sq_type(*o)) {
-    case OT_INSTANCE: *typetag = _instance(*o)->_class->_typetag; break;
+    case OT_INSTANCE: *typetag = _instance(*o)->klass->_typetag; break;
     case OT_USERDATA: *typetag = _userdata(*o)->_typetag; break;
     case OT_CLASS:    *typetag = _class(*o)->_typetag; break;
     default: return SQ_ERROR;
@@ -798,7 +796,7 @@ SQRESULT sq_setinstanceup(HSQUIRRELVM v, SQInteger idx, SQUserPointer p)
 {
     SQObjectPtr &o = stack_get(v,idx);
     if(sq_type(o) != OT_INSTANCE) return sq_throwerror(v,_SC("the object is not a class instance"));
-    _instance(o)->_userpointer = p;
+    _instance(o)->user_data = p;
     return SQ_OK;
 }
 
@@ -816,9 +814,9 @@ SQRESULT sq_getinstanceup(HSQUIRRELVM v, SQInteger idx, SQUserPointer *p, SQUser
 {
 	SQObjectPtr &o = stack_get(v, idx);
 	if (sq_type(o) != OT_INSTANCE) return throwerror ? sq_throwerror(v, _SC("the object is not a class instance")) : SQ_ERROR;
-	(*p) = _instance(o)->_userpointer;
+	(*p) = _instance(o)->user_data;
 	if (typetag != 0) {
-		SQClass *cl = _instance(o)->_class;
+		SQClass *cl = _instance(o)->klass;
 		do {
 			if (cl->_typetag == typetag)
 				return SQ_OK;
@@ -1300,7 +1298,7 @@ SQRESULT sq_readclosure(HSQUIRRELVM v,SQREADFUNC r,SQUserPointer up)
 
 SQChar *sq_getscratchpad(HSQUIRRELVM v,SQInteger minsize)
 {
-    return _ss(v)->GetScratchPad(minsize);
+    return _ss(v)->GetScratchPad(minsize < 0 ? 0 : minsize);
 }
 
 SQRESULT sq_resurrectunreachable(HSQUIRRELVM v)
@@ -1451,7 +1449,7 @@ SQRESULT _getmemberbyhandle(HSQUIRRELVM v,SQObjectPtr &self,const HSQMEMBERHANDL
         case OT_INSTANCE: {
                 SQInstance *i = _instance(self);
                 if(handle->_static) {
-                    SQClass *c = i->_class;
+                    SQClass *c = i->klass;
                     val = &c->_methods[handle->_index].val;
                 }
                 else {
@@ -1515,7 +1513,7 @@ SQRESULT sq_getclass(HSQUIRRELVM v,SQInteger idx)
 {
     SQObjectPtr *o = NULL;
     _GETSAFE_OBJ(v, idx, OT_INSTANCE,o);
-    v->Push(SQObjectPtr(_instance(*o)->_class));
+    v->Push(SQObjectPtr(_instance(*o)->klass));
     return SQ_OK;
 }
 
