@@ -48,6 +48,8 @@ pub fn build(b: *std.Build) void {
             "SQDelegable.cpp",
             "SQInstance.hpp",
             "SQInstance.cpp",
+            "SQString.hpp",
+            "SQString.cpp",
             "SQUserData.hpp",
             "SQUserData.cpp",
         },

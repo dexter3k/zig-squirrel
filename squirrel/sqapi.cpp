@@ -3,12 +3,12 @@
 */
 #include "sqpcheader.h"
 #include "sqvm.h"
-#include "sqstring.h"
 #include "sqtable.h"
 #include "sqarray.h"
 #include "sqfuncproto.h"
 #include "sqclosure.h"
 #include "SQInstance.hpp"
+#include "SQString.hpp"
 #include "SQUserData.hpp"
 #include "sqcompiler.h"
 #include "sqfuncstate.h"

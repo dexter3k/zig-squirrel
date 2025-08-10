@@ -7,7 +7,7 @@
 * http://www.lua.org/source/4.0.1/src_ltable.c.html
 */
 
-#include "sqstring.h"
+#include "SQString.hpp"
 #include "sqstate.h"
 #include "SQDelegable.hpp"
 

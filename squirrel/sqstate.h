@@ -47,7 +47,7 @@ public:
     SQSharedState()
         : _metamethods()
         , _systemstrings()
-        , _stringtable(this)
+        , _stringtable()
 #ifndef NO_GARBAGE_COLLECTOR
         , _gc_chain(nullptr)
 #endif

@@ -6,7 +6,7 @@
 #include <stdarg.h>
 #include <setjmp.h>
 #include "sqopcodes.h"
-#include "sqstring.h"
+#include "SQString.hpp"
 #include "sqfuncproto.h"
 #include "sqcompiler.h"
 #include "sqfuncstate.h"

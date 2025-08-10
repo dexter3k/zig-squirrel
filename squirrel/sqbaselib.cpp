@@ -3,7 +3,7 @@
 */
 #include "sqpcheader.h"
 #include "sqvm.h"
-#include "sqstring.h"
+#include "SQString.hpp"
 #include "sqtable.h"
 #include "sqarray.h"
 #include "sqfuncproto.h"

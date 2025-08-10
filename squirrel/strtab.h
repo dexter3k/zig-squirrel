@@ -6,7 +6,7 @@
 
 #include "squirrel.h"
 #include "squtils.h"
-#include "sqstring.h"
+#include "SQString.hpp"
 
 struct SQString;
 struct SQSharedState;
@@ -23,18 +23,26 @@ size_t hash_strings(uint8_t const * a, size_t a_len, uint8_t const * b, size_t b
 
 }
 
+inline SQHash _hashstr (const SQChar *s, size_t l)
+{
+    SQHash h = (SQHash)l;  /* seed */
+    size_t step = (l >> 5) + 1;  /* if string is too long, don't hash all its chars */
+    size_t l1;
+    for (l1 = l; l1 >= step; l1 -= step)
+        h = h ^ ((h << 5) + (h >> 2) + ((unsigned short)s[l1 - 1]));
+    return h;
+}
+
 class SQStringTable {
 public:
     SQString ** strings;
     SQUnsignedInteger _numofslots;
     SQUnsignedInteger _slotused;
-    SQSharedState * _sharedstate;
 
-    SQStringTable(SQSharedState * ss)
+    SQStringTable()
         : strings(nullptr)
         , _numofslots(0)
         , _slotused(0)
-        , _sharedstate(ss)
     {
         AllocNodes(128);
     }
@@ -56,7 +64,7 @@ public:
 
         SQString *t = (SQString *)sq_vm_malloc(len + sizeof(SQString));
         new (t) SQString;
-        t->_sharedstate = _sharedstate;
+        t->owner = this;
         memcpy(t->_val, news, len);
         t->_val[len] = '\0';
         t->_len = len;
@@ -91,7 +99,7 @@ public:
         SQString* t = (SQString*)sq_vm_malloc(sq_rsl(len) + sizeof(SQString));
         new (t) SQString;
 
-        t->_sharedstate = _sharedstate;
+        t->owner = this;
         memcpy(t->_val, a, sq_rsl(alen));
         memcpy(&t->_val[alen], b, sq_rsl(blen));
         t->_val[len] = _SC('\0');

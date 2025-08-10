@@ -8,7 +8,7 @@
 #include "sqvm.h"
 #include "sqfuncproto.h"
 #include "sqclosure.h"
-#include "sqstring.h"
+#include "SQString.hpp"
 #include "sqtable.h"
 #include "SQInstance.hpp"
 #include "SQUserData.hpp"

@@ -6,7 +6,7 @@
 #include "sqvm.h"
 #include "sqfuncproto.h"
 #include "sqclosure.h"
-#include "sqstring.h"
+#include "SQString.hpp"
 
 SQRESULT sq_getfunctioninfo(HSQUIRRELVM v,SQInteger level,SQFunctionInfo *fi)
 {

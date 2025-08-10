@@ -3,7 +3,7 @@
 */
 #include "sqpcheader.h"
 #include "sqvm.h"
-#include "sqstring.h"
+#include "SQString.hpp"
 #include "sqarray.h"
 #include "sqtable.h"
 #include "SQInstance.hpp"
@@ -43,31 +43,6 @@ const SQChar *IdType2Name(SQObjectType type)
 
 const SQChar *GetTypeName(const SQObjectPtr &obj1) {
     return IdType2Name(sq_type(obj1));
-}
-
-SQString *SQString::Create(SQSharedState *ss,const SQChar *s, SQInteger len) {
-    return ss->_stringtable.Add(s, len);
-}
-
-SQString* SQString::Concat(SQSharedState* ss, const SQChar* a, SQInteger alen, const SQChar* b, SQInteger blen) {
-    return ss->_stringtable.Concat(a, alen, b, blen);
-}
-
-void SQString::Release() {
-    _sharedstate->_stringtable.Remove(this);
-}
-
-SQInteger SQString::Next(const SQObjectPtr &refpos, SQObjectPtr &outkey, SQObjectPtr &outval)
-{
-    SQInteger idx = (SQInteger)TranslateIndex(refpos);
-    while(idx < _len){
-        outkey = (SQInteger)idx;
-        outval = (SQInteger)((SQUnsignedInteger)_val[idx]);
-        //return idx for the next iteration
-        return ++idx;
-    }
-    //nothing to iterate anymore
-    return -1;
 }
 
 SQUnsignedInteger TranslateIndex(SQObjectPtr const & idx) {

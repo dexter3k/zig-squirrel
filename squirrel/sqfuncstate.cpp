@@ -4,7 +4,7 @@
 #include "sqpcheader.h"
 #ifndef NO_COMPILER
 #include "sqcompiler.h"
-#include "sqstring.h"
+#include "SQString.hpp"
 #include "sqfuncproto.h"
 #include "sqtable.h"
 #include "sqopcodes.h"
