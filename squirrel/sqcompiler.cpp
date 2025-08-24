@@ -1,18 +1,16 @@
-/*
-    see copyright notice in squirrel.h
-*/
-#include "sqpcheader.h"
 #ifndef NO_COMPILER
 #include <stdarg.h>
 #include <setjmp.h>
-#include "sqopcodes.h"
-#include "SQString.hpp"
-#include "sqfuncproto.h"
+
 #include "sqcompiler.h"
+#include "sqopcodes.h"
 #include "sqfuncstate.h"
 #include "lexer.h"
-#include "sqvm.h"
-#include "sqtable.h"
+
+#include "SQString.hpp"
+#include "SQFunctionProto.hpp"
+#include "SQVM.hpp"
+#include "SQTable.hpp"
 
 enum ExpressionType {
     EXPR   = 1,
@@ -93,7 +91,7 @@ public:
         bool lineinfo
     )
         : _fs()
-        , _sourcename(SQString::Create(v->_sharedstate, sourcename))
+        , _sourcename(v->_sharedstate->gc.AddString(sourcename, strlen(sourcename)))
         , lexer_state(nullptr)
         , _lineinfo(lineinfo)
         , _raiseerror(raiseerror)
@@ -119,7 +117,7 @@ public:
     void Error(const SQChar *s, ...) {
         va_list vl;
         va_start(vl, s);
-        scvsprintf(_compilererror, MAX_COMPILER_ERROR_LEN, s, vl);
+        vsnprintf(_compilererror, MAX_COMPILER_ERROR_LEN, s, vl);
         va_end(vl);
         longjmp(_errorjmp,1);
     }
@@ -136,8 +134,7 @@ public:
             else {
                 const SQChar *etypename;
                 if(tok > 255) {
-                    switch(tok)
-                    {
+                    switch(tok) {
                     case TK_IDENTIFIER:
                         etypename = "IDENTIFIER";
                         break;
@@ -215,7 +212,7 @@ public:
 
     bool Compile(SQObjectPtr & o) {
         SQFuncState funcstate(_vm->_sharedstate, NULL, ThrowError, this);
-        funcstate._name = SQString::Create(_vm->_sharedstate, "main");
+        funcstate._name = _vm->_sharedstate->gc.AddString("main", strlen("main"));
         _fs = &funcstate;
         _fs->AddParameter(_fs->CreateString("this"));
         _fs->AddParameter(_fs->CreateString("vargv"));
@@ -254,7 +251,7 @@ public:
                     lexer.state.current_column
                 );
             }
-            _vm->_lasterror = SQString::Create(_ss(_vm), _compilererror, -1);
+            _vm->_lasterror = _vm->_sharedstate->gc.AddString(_compilererror, strlen(_compilererror));
             return false;
         }
         return true;
@@ -1734,9 +1731,6 @@ public:
         funcstate->SetStackSize(0);
 
         SQFunctionProto *func = funcstate->BuildProto();
-#ifdef _DEBUG_DUMP
-        funcstate->Dump(func);
-#endif
         _fs = currchunk;
         _fs->_functions.push_back(func);
         _fs->PopChildState();
@@ -1751,12 +1745,12 @@ public:
             ntoresolve--;
         }
     }
-    void ResolveContinues(SQFuncState *funcstate, SQInteger ntoresolve, SQInteger targetpos)
-    {
-        while(ntoresolve > 0) {
+
+    void ResolveContinues(SQFuncState * funcstate, SQInteger ntoresolve, SQInteger targetpos) {
+        while (ntoresolve > 0) {
             SQInteger pos = funcstate->_unresolvedcontinues.back();
             funcstate->_unresolvedcontinues.pop_back();
-            //set the jmp instruction
+            // set the jmp instruction
             funcstate->SetInstructionParams(pos, 0, targetpos - pos, 0);
             ntoresolve--;
         }

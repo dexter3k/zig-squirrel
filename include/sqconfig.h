@@ -44,7 +44,6 @@ typedef char SQChar;
 #define _SC(a) a
 #define scstrcmp    strcmp
 #define scsprintf   snprintf
-#define scstrlen    strlen
 #define scstrtod    strtod
 
 #ifdef _SQ64
@@ -54,7 +53,6 @@ typedef char SQChar;
 #endif
 
 #define scstrtoul   strtoul
-#define scvsprintf  vsnprintf
 #define scstrstr    strstr
 #define scisspace   isspace
 #define scisdigit   isdigit

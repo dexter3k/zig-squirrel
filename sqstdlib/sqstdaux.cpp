@@ -131,14 +131,13 @@ void sqstd_seterrorhandlers(HSQUIRRELVM v)
     sq_seterrorhandler(v);
 }
 
-SQRESULT sqstd_throwerrorf(HSQUIRRELVM v,const SQChar *err,...)
-{
+SQRESULT sqstd_throwerrorf(HSQUIRRELVM v, const SQChar *err, ...) {
     SQInteger n=256;
     va_list args;
 begin:
     va_start(args,err);
-    SQChar *b=sq_getscratchpad(v,n);
-    SQInteger r=scvsprintf(b,n,err,args);
+    SQChar * b = sq_getscratchpad(v,n);
+    SQInteger r = vsnprintf(b,n,err,args);
     va_end(args);
     if (r>=n) {
         n=r+1;//required+null

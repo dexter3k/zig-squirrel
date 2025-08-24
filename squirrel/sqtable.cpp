@@ -1,26 +1,22 @@
-/*
-see copyright notice in squirrel.h
-*/
-#include "sqpcheader.h"
-#include "sqvm.h"
-#include "sqtable.h"
-#include "sqfuncproto.h"
-#include "sqclosure.h"
+#include "SQTable.hpp"
 
-SQTable::SQTable(SQSharedState *ss,SQInteger nInitialSize)
+#include "SQVM.hpp"
+
+SQTable::SQTable(SQSharedState *ss, size_t nInitialSize)
+    : SQDelegable(ss)
+    , _firstfree(nullptr)
+    , _nodes(nullptr)
+    , _numofnodes(0)
+    , _usednodes(0)
 {
-    SQInteger pow2size= 4;
-    while(nInitialSize>pow2size)pow2size=pow2size<<1;
+    size_t pow2size = 4;
+    while (nInitialSize > pow2size) {
+        pow2size = pow2size << 1;
+    }
     AllocNodes(pow2size);
-    _usednodes = 0;
-    _delegate = NULL;
-    INIT_CHAIN();
-    ADD_TO_CHAIN(&_sharedstate->_gc_chain,this);
 }
 
-void SQTable::Remove(const SQObjectPtr &key)
-{
-
+void SQTable::Remove(SQObjectPtr const & key) {
     _HashNode *n = _Get(key, HashObj(key) & (_numofnodes - 1));
     if (n) {
         n->val.Null();
@@ -30,28 +26,31 @@ void SQTable::Remove(const SQObjectPtr &key)
     }
 }
 
-void SQTable::AllocNodes(SQInteger nSize)
-{
-    _HashNode *nodes=(_HashNode *)sq_vm_malloc(sizeof(_HashNode)*nSize);
-    for(SQInteger i=0;i<nSize;i++){
-        _HashNode &n = nodes[i];
-        new (&n) _HashNode;
-        n.next=NULL;
+void SQTable::AllocNodes(size_t nSize) {
+    _HashNode * nodes = (_HashNode *)sq_vm_malloc(sizeof(_HashNode) * nSize);
+
+    for (size_t i = 0; i < nSize; i++) {
+        _HashNode & n = nodes[i];
+        new (&n) _HashNode();
     }
-    _numofnodes=nSize;
-    _nodes=nodes;
-    _firstfree=&_nodes[_numofnodes-1];
+
+    _numofnodes = nSize;
+    _nodes = nodes;
+    _firstfree = &_nodes[_numofnodes - 1];
 }
 
-void SQTable::Rehash(bool force)
-{
-    SQInteger oldsize=_numofnodes;
+void SQTable::Rehash(bool force) {
+    size_t oldsize = _numofnodes;
+
     //prevent problems with the integer division
-    if(oldsize<4)oldsize=4;
-    _HashNode *nold=_nodes;
-    SQInteger nelems=CountUsed();
-    if (nelems >= oldsize-oldsize/4)  /* using more than 3/4? */
-        AllocNodes(oldsize*2);
+    if (oldsize < 4) {
+        oldsize = 4;
+    }
+
+    _HashNode * nold = _nodes;
+    size_t nelems = CountUsed();
+    if (nelems >= oldsize - oldsize / 4)  /* using more than 3/4? */
+        AllocNodes(oldsize * 2);
     else if (nelems <= oldsize/4 &&  /* less than 1/4? */
         oldsize > 4)
         AllocNodes(oldsize/2);
@@ -60,12 +59,12 @@ void SQTable::Rehash(bool force)
     else
         return;
     _usednodes = 0;
-    for (SQInteger i=0; i<oldsize; i++) {
+    for (size_t i = 0; i < oldsize; i++) {
         _HashNode *old = nold+i;
         if (sq_type(old->key) != OT_NULL)
             NewSlot(old->key,old->val);
     }
-    for(SQInteger k=0;k<oldsize;k++)
+    for(size_t k=0;k<oldsize;k++)
         nold[k].~_HashNode();
     sq_vm_free(nold,oldsize*sizeof(_HashNode));
 }
@@ -78,8 +77,7 @@ SQTable *SQTable::Clone()
     _HashNode *basedst = nt->_nodes;
     _HashNode *src = _nodes;
     _HashNode *dst = nt->_nodes;
-    SQInteger n = 0;
-    for(n = 0; n < _numofnodes; n++) {
+    for(size_t n = 0; n < _numofnodes; n++) {
         dst->key = src->key;
         dst->val = src->val;
         if(src->next) {
@@ -178,9 +176,9 @@ bool SQTable::NewSlot(const SQObjectPtr &key,const SQObjectPtr &val)
 
 SQInteger SQTable::Next(bool getweakrefs,const SQObjectPtr &refpos, SQObjectPtr &outkey, SQObjectPtr &outval)
 {
-    SQInteger idx = (SQInteger)TranslateIndex(refpos);
+    SQUnsignedInteger idx = TranslateIndex(refpos);
     while (idx < _numofnodes) {
-        if(sq_type(_nodes[idx].key) != OT_NULL) {
+        if (sq_type(_nodes[idx].key) != OT_NULL) {
             //first found
             _HashNode &n = _nodes[idx];
             outkey = n.key;
@@ -206,7 +204,7 @@ bool SQTable::Set(const SQObjectPtr &key, const SQObjectPtr &val)
 }
 
 void SQTable::_ClearNodes() {
-    for (SQInteger i = 0; i < _numofnodes; i++) {
+    for (size_t i = 0; i < _numofnodes; i++) {
         _HashNode &n = _nodes[i];
         n.key.Null();
         n.val.Null();

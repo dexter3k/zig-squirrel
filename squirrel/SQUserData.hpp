@@ -2,9 +2,9 @@
 
 #include <cstdint>
 
-#include "sqvm.h"
 #include "sqstate.h"
 #include "SQDelegable.hpp"
+#include "SQVM.hpp"
 
 struct SQUserData : SQDelegable {
     size_t _size;
@@ -12,17 +12,13 @@ struct SQUserData : SQDelegable {
     SQUserPointer _typetag;
 private:
     SQUserData(SQSharedState * ss, size_t size)
-        : SQDelegable()
+        : SQDelegable(ss)
         , _size(size)
         , _hook(nullptr)
         , _typetag(nullptr)
-    {
-        INIT_CHAIN();
-        ADD_TO_CHAIN(&_ss(this)->_gc_chain, this);
-    }
+    {}
 
     ~SQUserData() {
-        REMOVE_FROM_CHAIN(&_ss(this)->_gc_chain, this);
         SetDelegate(NULL);
     }
 public:

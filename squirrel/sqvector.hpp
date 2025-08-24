@@ -4,8 +4,6 @@
 
 #include "sqmem.h"
 
-#define sq_aligning(v) (((size_t)(v) + (SQ_ALIGNMENT-1)) & (~(SQ_ALIGNMENT-1)))
-
 template<typename T>
 class sqvector {
     size_t len;
@@ -24,11 +22,11 @@ public:
     }
 
     void copy(sqvector<T> const & v) {
-        if(len) {
-            resize(0); //destroys all previous stuff
+        if (len) {
+            resize(0); // destroys all previous stuff
         }
 
-        if(v.len > cap) {
+        if (v.len > cap) {
             _realloc(v.len);
         }
 
@@ -72,7 +70,7 @@ public:
     }
 
     void shrinktofit() {
-        if(len > 4) {
+        if (len > 4) {
             _realloc(len);
         }
     }

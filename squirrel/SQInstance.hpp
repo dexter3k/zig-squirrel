@@ -1,7 +1,7 @@
 #pragma once
 
+#include "SQClass.hpp"
 #include "SQDelegable.hpp"
-#include "sqclass.h"
 
 struct SQInstance : public SQDelegable {
     SQClass * klass;

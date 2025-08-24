@@ -556,7 +556,7 @@ SQRex *sqstd_rex_compile(const SQChar *pattern,const SQChar **error)
     SQRex * volatile exp = (SQRex *)sq_malloc(sizeof(SQRex)); // "volatile" is needed for setjmp()
     exp->_eol = exp->_bol = NULL;
     exp->_p = pattern;
-    exp->_nallocated = (SQInteger)scstrlen(pattern) * sizeof(SQChar);
+    exp->_nallocated = (SQInteger)strlen(pattern) * sizeof(SQChar);
     exp->_nodes = (SQRexNode *)sq_malloc(exp->_nallocated * sizeof(SQRexNode));
     exp->_nsize = 0;
     exp->_matches = 0;
@@ -610,7 +610,7 @@ SQBool sqstd_rex_match(SQRex* exp,const SQChar* text)
 {
     const SQChar* res = NULL;
     exp->_bol = text;
-    exp->_eol = text + scstrlen(text);
+    exp->_eol = text + strlen(text);
     exp->_currsubexp = 0;
     res = sqstd_rex_matchnode(exp,exp->_nodes,text,NULL);
     if(res == NULL || res != exp->_eol)
@@ -649,7 +649,7 @@ SQBool sqstd_rex_searchrange(SQRex* exp,const SQChar* text_begin,const SQChar* t
 
 SQBool sqstd_rex_search(SQRex* exp,const SQChar* text, const SQChar** out_begin, const SQChar** out_end)
 {
-    return sqstd_rex_searchrange(exp,text,text + scstrlen(text),out_begin,out_end);
+    return sqstd_rex_searchrange(exp,text,text + strlen(text),out_begin,out_end);
 }
 
 SQInteger sqstd_rex_getsubexpcount(SQRex* exp)

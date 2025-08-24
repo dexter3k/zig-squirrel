@@ -129,7 +129,7 @@ struct SQInstruction {
     uint8_t _arg3;
 };
 
-#include "squtils.h"
+#include "sqvector.hpp"
 typedef sqvector<SQInstruction> SQInstructionVec;
 
 #define NEW_SLOT_ATTRIBUTES_FLAG    0x01

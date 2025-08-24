@@ -1,12 +1,13 @@
 #pragma once
 
+#include "SQCollectable.hpp"
 #include "sqobject.h"
 
 struct SQDelegable : public CHAINABLE_OBJ {
     SQTable * _delegate;
 
-    SQDelegable()
-        : CHAINABLE_OBJ()
+    SQDelegable(SQSharedState * ss)
+        : CHAINABLE_OBJ(ss)
         , _delegate(nullptr)
     {}
 

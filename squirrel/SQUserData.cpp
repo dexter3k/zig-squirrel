@@ -1,6 +1,6 @@
 #include "SQUserData.hpp"
 
-#include "sqtable.h"
+#include "SQTable.hpp"
 
 #ifndef NO_GARBAGE_COLLECTOR
 void SQUserData::Mark(SQCollectable ** chain) {

@@ -1,19 +1,20 @@
-/*
-    see copyright notice in squirrel.h
-*/
-#include "sqpcheader.h"
-#include <stdarg.h>
-#include "sqvm.h"
-#include "sqfuncproto.h"
-#include "sqclosure.h"
+#include <cstdarg>
+#include <cstring>
+#include <cstdio>
+
+#include "sqstate.h"
+
+#include "SQVM.hpp"
+#include "SQFunctionProto.hpp"
+#include "SQClosure.hpp"
+#include "SQNativeClosure.hpp"
 #include "SQString.hpp"
 
-SQRESULT sq_getfunctioninfo(HSQUIRRELVM v,SQInteger level,SQFunctionInfo *fi)
-{
-    SQInteger cssize = v->_callsstacksize;
-    if (cssize > level) {
-        SQVM::CallInfo &ci = v->_callsstack[cssize-level-1];
-        if(sq_isclosure(ci._closure)) {
+SQRESULT sq_getfunctioninfo(HSQUIRRELVM v, SQInteger level, SQFunctionInfo *fi) {
+    size_t cssize = v->call_stack_size;
+    if (cssize > size_t(level)) {
+        SQVM::CallInfo &ci = v->call_stack[cssize - size_t(level) - 1];
+        if (sq_isclosure(ci._closure)) {
             SQClosure *c = _closure(ci._closure);
             SQFunctionProto *proto = c->_function;
             fi->funcid = proto;
@@ -26,12 +27,11 @@ SQRESULT sq_getfunctioninfo(HSQUIRRELVM v,SQInteger level,SQFunctionInfo *fi)
     return sq_throwerror(v,_SC("the object is not a closure"));
 }
 
-SQRESULT sq_stackinfos(HSQUIRRELVM v, SQInteger level, SQStackInfos *si)
-{
-    SQInteger cssize = v->_callsstacksize;
-    if (cssize > level) {
+SQRESULT sq_stackinfos(HSQUIRRELVM v, SQInteger level, SQStackInfos *si) {
+    size_t cssize = v->call_stack_size;
+    if (cssize > size_t(level)) {
         memset(si, 0, sizeof(SQStackInfos));
-        SQVM::CallInfo &ci = v->_callsstack[cssize-level-1];
+        SQVM::CallInfo &ci = v->call_stack[cssize - size_t(level) - 1];
         switch (sq_type(ci._closure)) {
         case OT_CLOSURE:{
             SQFunctionProto *func = _closure(ci._closure)->_function;
@@ -60,10 +60,10 @@ void SQVM::Raise_Error(const SQChar *s, ...)
 {
     va_list vl;
     va_start(vl, s);
-    SQInteger buffersize = (SQInteger)scstrlen(s)+(NUMBER_MAX_CHAR*2);
-    scvsprintf(_sp(sq_rsl(buffersize)),buffersize, s, vl);
+    SQInteger buffersize = (SQInteger)strlen(s)+(NUMBER_MAX_CHAR*2);
+    vsnprintf(_sp(sq_rsl(buffersize)),buffersize, s, vl);
     va_end(vl);
-    _lasterror = SQString::Create(_ss(this),_spval,-1);
+    _lasterror = this->_sharedstate->gc.AddString(_spval, strlen(_spval));
 }
 
 void SQVM::Raise_Error(const SQObjectPtr &desc)
@@ -77,14 +77,16 @@ SQString *SQVM::PrintObjVal(const SQObjectPtr &o)
     case OT_STRING: return _string(o);
     case OT_INTEGER:
         scsprintf(_sp(sq_rsl(NUMBER_MAX_CHAR+1)),sq_rsl(NUMBER_MAX_CHAR), _PRINT_INT_FMT, _integer(o));
-        return SQString::Create(_ss(this), _spval);
+        return this->_sharedstate->gc.AddString(_spval, strlen(_spval));
         break;
     case OT_FLOAT:
         scsprintf(_sp(sq_rsl(NUMBER_MAX_CHAR+1)), sq_rsl(NUMBER_MAX_CHAR), _SC("%.14g"), _float(o));
-        return SQString::Create(_ss(this), _spval);
+        return this->_sharedstate->gc.AddString(_spval, strlen(_spval));
         break;
-    default:
-        return SQString::Create(_ss(this), GetTypeName(o));
+    default: {
+        char const * name = GetTypeName(o);
+        return this->_sharedstate->gc.AddString(name, strlen(name));
+    }
     }
 }
 
@@ -101,18 +103,22 @@ void SQVM::Raise_CompareError(const SQObject &o1, const SQObject &o2)
 }
 
 
-void SQVM::Raise_ParamTypeError(SQInteger nparam,SQInteger typemask,SQInteger type)
-{
-    SQObjectPtr exptypes = SQString::Create(_ss(this), _SC(""), -1);
+void SQVM::Raise_ParamTypeError(SQInteger nparam, SQInteger typemask, SQInteger type) {
+    SQObjectPtr exptypes = this->_sharedstate->gc.AddString("", 0);
     SQInteger found = 0;
-    for(SQInteger i=0; i<16; i++)
-    {
+    for (SQInteger i = 0; i < 16; i++) {
         SQInteger mask = ((SQInteger)1) << i;
-        if(typemask & (mask)) {
-            if(found>0) StringCat(exptypes,SQString::Create(_ss(this), _SC("|"), -1), exptypes);
-            found ++;
-            StringCat(exptypes,SQString::Create(_ss(this), IdType2Name((SQObjectType)mask), -1), exptypes);
+        if (typemask & (mask)) {
+            if (found > 0) {
+                StringCat(exptypes, this->_sharedstate->gc.AddString("|", 1), exptypes);
+            }
+            found++;
+            char const * name = IdType2Name((SQObjectType)mask);
+            StringCat(exptypes, this->_sharedstate->gc.AddString(name, strlen(name)), exptypes);
         }
     }
-    Raise_Error(_SC("parameter %d has an invalid type '%s' ; expected: '%s'"), nparam, IdType2Name((SQObjectType)type), _stringval(exptypes));
+    Raise_Error("parameter %d has an invalid type '%s' ; expected: '%s'",
+        nparam,
+        IdType2Name((SQObjectType)type),
+        _stringval(exptypes));
 }

@@ -1,16 +1,10 @@
-/*
-    see copyright notice in squirrel.h
-*/
-#include "sqpcheader.h"
-#include "sqvm.h"
-#include "sqtable.h"
-#include "sqclass.h"
-#include "sqfuncproto.h"
-#include "sqclosure.h"
+#include "SQClass.hpp"
+
+#include "SQClosure.hpp"
 #include "SQInstance.hpp"
 
-
-SQClass::SQClass(SQSharedState *ss,SQClass *base)
+SQClass::SQClass(SQSharedState * ss, SQClass * base)
+    : CHAINABLE_OBJ(ss)
 {
     _base = base;
     _typetag = 0;
@@ -24,13 +18,12 @@ SQClass::SQClass(SQSharedState *ss,SQClass *base)
         _defaultvalues.copy(base->_defaultvalues);
         _methods.copy(base->_methods);
         _COPY_VECTOR(_metamethods,base->_metamethods,MT_LAST);
-        __ObjAddRef(_base);
+        _base->IncreaseRefCount();
     }
-    _members = base?base->_members->Clone() : SQTable::Create(ss,0);
-    __ObjAddRef(_members);
-
-    INIT_CHAIN();
-    ADD_TO_CHAIN(&_sharedstate->_gc_chain, this);
+    _members = base
+        ? base->_members->Clone()
+        : SQTable::Create(ss, 0);
+    _members->IncreaseRefCount();
 }
 
 void SQClass::Finalize() {
@@ -38,17 +31,17 @@ void SQClass::Finalize() {
     _NULL_SQOBJECT_VECTOR(_defaultvalues,_defaultvalues.size());
     _methods.resize(0);
     _NULL_SQOBJECT_VECTOR(_metamethods,MT_LAST);
-    __ObjRelease(_members);
+
+    _members->DecreaseRefCount();
     _members = nullptr;
+
     if(_base) {
-        __ObjRelease(_base);
+        _base->DecreaseRefCount();
         _base = nullptr;
     }
 }
 
-SQClass::~SQClass()
-{
-    REMOVE_FROM_CHAIN(&_sharedstate->_gc_chain, this);
+SQClass::~SQClass() {
     Finalize();
 }
 
@@ -77,7 +70,7 @@ bool SQClass::NewSlot(SQSharedState *ss,const SQObjectPtr &key,const SQObjectPtr
             if(_base && sq_type(val) == OT_CLOSURE) {
                 theval = _closure(val)->Clone();
                 _closure(theval)->_base = _base;
-                __ObjAddRef(_base); //ref for the closure
+                _base->IncreaseRefCount(); // for the closure
             }
             if(sq_type(temp) == OT_NULL) {
                 bool isconstructor;

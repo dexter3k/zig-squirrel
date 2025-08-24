@@ -1,11 +1,9 @@
-/*  see copyright notice in squirrel.h */
-#ifndef _SQCLASS_H_
-#define _SQCLASS_H_
+#pragma once
 
 #include <new>
 
-#include "sqtable.h"
 #include "SQDelegable.hpp"
+#include "SQTable.hpp"
 
 struct SQInstance;
 
@@ -55,14 +53,16 @@ public:
         }
         return false;
     }
-    bool GetConstructor(SQObjectPtr &ctor)
-    {
-        if(_constructoridx != -1) {
-            ctor = _methods[_constructoridx].val;
-            return true;
+
+    bool GetConstructor(SQObjectPtr & ctor) {
+        if (_constructoridx == -1) {
+            return false;
         }
-        return false;
+
+        ctor = _methods[_constructoridx].val;
+        return true;
     }
+
     bool SetAttributes(const SQObjectPtr &key,const SQObjectPtr &val);
     bool GetAttributes(const SQObjectPtr &key,SQObjectPtr &outval);
     void Lock() { _locked = true; if(_base) _base->Lock(); }
@@ -96,5 +96,3 @@ public:
     SQInteger _constructoridx;
     SQInteger _udsize;
 };
-
-#endif //_SQCLASS_H_

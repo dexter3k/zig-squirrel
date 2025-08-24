@@ -1,14 +1,18 @@
-/*
-    see copyright notice in squirrel.h
-*/
-#include "sqpcheader.h"
 #ifndef NO_COMPILER
-#include "sqcompiler.h"
-#include "SQString.hpp"
-#include "sqfuncproto.h"
-#include "sqtable.h"
-#include "sqopcodes.h"
 #include "sqfuncstate.h"
+
+#include "sqcompiler.h"
+#include "sqopcodes.h"
+
+#include "SQFunctionProto.hpp"
+#include "SQString.hpp"
+#include "SQTable.hpp"
+
+#ifdef _SQ64
+#define UINT_MINUS_ONE (0xFFFFFFFFFFFFFFFF)
+#else
+#define UINT_MINUS_ONE (0xFFFFFFFF)
+#endif
 
 #ifdef _DEBUG_DUMP
 SQInstructionDesc g_InstrDesc[]={
@@ -584,9 +588,11 @@ void SQFuncState::AddInstruction(SQInstruction &i)
     _instructions.push_back(i);
 }
 
-SQObject SQFuncState::CreateString(const SQChar *s,SQInteger len)
-{
-    SQObjectPtr ns(SQString::Create(_sharedstate,s,len));
+SQObject SQFuncState::CreateString(const SQChar *s,SQInteger len) {
+    if (len < 0) {
+        len = strlen(s);
+    }
+    SQObjectPtr ns(_sharedstate->gc.AddString(s, len));
     _table(_strings)->NewSlot(ns,(SQInteger)1);
     return ns;
 }

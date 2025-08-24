@@ -2,8 +2,8 @@
 
 #include <new>
 
-#include "sqtable.h"
-#include "sqvm.h"
+#include "SQTable.hpp"
+#include "SQVM.hpp"
 
 bool SQDelegable::SetDelegate(SQTable * mt) {
     SQTable * temp = mt;
@@ -17,9 +17,11 @@ bool SQDelegable::SetDelegate(SQTable * mt) {
         temp = temp->_delegate;
     }
     if (mt) {
-    	__ObjAddRef(mt);
+    	mt->IncreaseRefCount();
     }
-    __ObjRelease(_delegate);
+    if (_delegate) {
+        _delegate->DecreaseRefCount();
+    }
     _delegate = mt;
     return true;
 }

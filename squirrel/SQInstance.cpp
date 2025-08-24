@@ -1,7 +1,7 @@
 #include "SQInstance.hpp"
 
 SQInstance::SQInstance(SQSharedState * ss, SQClass * c, size_t memsize)
-	: SQDelegable()
+	: SQDelegable(ss)
 	, klass(c)
 	, user_data(nullptr)
 	, _hook(nullptr)
@@ -13,15 +13,12 @@ SQInstance::SQInstance(SQSharedState * ss, SQClass * c, size_t memsize)
         new (&_values[n]) SQObjectPtr(klass->_defaultvalues[n].val);
     }
 
-    __ObjAddRef(klass);
+    klass->IncreaseRefCount();
     _delegate = klass->_members;
-
-    INIT_CHAIN();
-    ADD_TO_CHAIN(&_sharedstate->_gc_chain, this);
 }
 
 SQInstance::SQInstance(SQSharedState * ss, SQInstance * i, size_t memsize)
-    : SQDelegable()
+    : SQDelegable(ss)
     , klass(i->klass)
     , user_data(nullptr)
     , _hook(nullptr)
@@ -33,16 +30,11 @@ SQInstance::SQInstance(SQSharedState * ss, SQInstance * i, size_t memsize)
         new (&_values[n]) SQObjectPtr(i->_values[n]);
     }
 
-    __ObjAddRef(klass);
+    klass->IncreaseRefCount();
     _delegate = klass->_members;
-
-    INIT_CHAIN();
-    ADD_TO_CHAIN(&_sharedstate->_gc_chain, this);
 }
 
 SQInstance::~SQInstance() {
-    REMOVE_FROM_CHAIN(&_sharedstate->_gc_chain, this);
-
     // if klass is null it was already finalized by the GC
     if (klass) {
         Finalize();
@@ -52,7 +44,7 @@ SQInstance::~SQInstance() {
 void SQInstance::Finalize() {
     size_t const nvalues = klass->_defaultvalues.size();
 
-    __ObjRelease(klass);
+    klass->DecreaseRefCount();
     klass = nullptr;
 
     for (size_t i = 0; i < nvalues; i++) {
@@ -88,7 +80,7 @@ void SQInstance::Mark(SQCollectable **chain)
         klass->Mark(chain);
         SQUnsignedInteger nvalues = klass->_defaultvalues.size();
         for(SQUnsignedInteger i =0; i< nvalues; i++) {
-            SQSharedState::MarkObject(_values[i], chain);
+            GC::MarkObject(_values[i], chain);
         }
     END_MARK()
 }

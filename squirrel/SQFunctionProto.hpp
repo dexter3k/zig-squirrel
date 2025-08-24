@@ -1,17 +1,17 @@
-/*  see copyright notice in squirrel.h */
-#ifndef _SQFUNCTION_H_
-#define _SQFUNCTION_H_
+#pragma once
+
+#include <new>
 
 #include "sqopcodes.h"
+
+#include "SQCollectable.hpp"
 
 enum SQOuterType {
     otLOCAL = 0,
     otOUTER = 1
 };
 
-struct SQOuterVar
-{
-
+struct SQOuterVar {
     SQOuterVar(){}
     SQOuterVar(const SQObjectPtr &name,const SQObjectPtr &src,SQOuterType t)
     {
@@ -24,8 +24,7 @@ struct SQOuterVar
     SQObjectPtr _src;
 };
 
-struct SQLocalVarInfo
-{
+struct SQLocalVarInfo {
     SQLocalVarInfo():_start_op(0),_end_op(0),_pos(0){}
     SQObjectPtr _name;
     SQUnsignedInteger _start_op;
@@ -45,12 +44,9 @@ typedef sqvector<SQLineInfo> SQLineInfoVec;
         +(localinf*sizeof(SQLocalVarInfo))+(defparams*sizeof(SQInteger)))
 
 
-struct SQFunctionProto : public CHAINABLE_OBJ
-{
+struct SQFunctionProto : public CHAINABLE_OBJ {
 private:
-    SQFunctionProto(SQSharedState *ss);
-    ~SQFunctionProto();
-
+    SQFunctionProto(SQSharedState * ss);
 public:
     static SQFunctionProto *Create(SQSharedState *ss,SQInteger ninstructions,
         SQInteger nliterals,SQInteger nparameters,
@@ -77,12 +73,21 @@ public:
         f->_defaultparams = (SQInteger *)&f->_localvarinfos[nlocalvarinfos];
         f->_ndefaultparams = ndefaultparams;
 
-        _CONSTRUCT_VECTOR(SQObjectPtr,f->_nliterals,f->_literals);
-        _CONSTRUCT_VECTOR(SQObjectPtr,f->_nparameters,f->_parameters);
-        _CONSTRUCT_VECTOR(SQObjectPtr,f->_nfunctions,f->_functions);
-        _CONSTRUCT_VECTOR(SQOuterVar,f->_noutervalues,f->_outervalues);
-        //_CONSTRUCT_VECTOR(SQLineInfo,f->_nlineinfos,f->_lineinfos); //not required are 2 integers
-        _CONSTRUCT_VECTOR(SQLocalVarInfo,f->_nlocalvarinfos,f->_localvarinfos);
+        for (size_t i = 0; i < f->_nliterals; i++) {
+            new (&f->_literals[i]) SQObjectPtr();
+        }
+        for (size_t i = 0; i < f->_nparameters; i++) {
+            new (&f->_parameters[i]) SQObjectPtr();
+        }
+        for (size_t i = 0; i < f->_nfunctions; i++) {
+            new (&f->_functions[i]) SQObjectPtr();
+        }
+        for (size_t i = 0; i < f->_noutervalues; i++) {
+            new (&f->_outervalues[i]) SQOuterVar();
+        }
+        for (size_t i = 0; i < f->_nlocalvarinfos; i++) {
+            new (&f->_localvarinfos[i]) SQLocalVarInfo();
+        }
         return f;
     }
     void Release(){
@@ -90,7 +95,6 @@ public:
         _DESTRUCT_VECTOR(SQObjectPtr,_nparameters,_parameters);
         _DESTRUCT_VECTOR(SQObjectPtr,_nfunctions,_functions);
         _DESTRUCT_VECTOR(SQOuterVar,_noutervalues,_outervalues);
-        //_DESTRUCT_VECTOR(SQLineInfo,_nlineinfos,_lineinfos); //not required are 2 integers
         _DESTRUCT_VECTOR(SQLocalVarInfo,_nlocalvarinfos,_localvarinfos);
         SQInteger size = _FUNC_SIZE(_ninstructions,_nliterals,_nparameters,_nfunctions,_noutervalues,_nlineinfos,_nlocalvarinfos,_ndefaultparams);
         this->~SQFunctionProto();
@@ -103,7 +107,11 @@ public:
     static bool Load(SQVM *v,SQUserPointer up,SQREADFUNC read,SQObjectPtr &ret);
 #ifndef NO_GARBAGE_COLLECTOR
     void Mark(SQCollectable **chain);
-    void Finalize(){ _NULL_SQOBJECT_VECTOR(_literals,_nliterals); }
+    void Finalize() {
+        for (size_t i = 0; i < _nliterals; i++) {
+            _literals[i].Null();
+        }
+    }
     SQObjectType GetType() {return OT_FUNCPROTO;}
 #endif
     SQObjectPtr _sourcename;
@@ -112,29 +120,27 @@ public:
     bool _bgenerator;
     SQInteger _varparams;
 
-    SQInteger _nlocalvarinfos;
+    size_t _nlocalvarinfos;
     SQLocalVarInfo *_localvarinfos;
 
-    SQInteger _nlineinfos;
+    size_t _nlineinfos;
     SQLineInfo *_lineinfos;
 
-    SQInteger _nliterals;
+    size_t _nliterals;
     SQObjectPtr *_literals;
 
-    SQInteger _nparameters;
+    size_t _nparameters;
     SQObjectPtr *_parameters;
 
-    SQInteger _nfunctions;
+    size_t _nfunctions;
     SQObjectPtr *_functions;
 
-    SQInteger _noutervalues;
+    size_t _noutervalues;
     SQOuterVar *_outervalues;
 
-    SQInteger _ndefaultparams;
+    size_t _ndefaultparams;
     SQInteger *_defaultparams;
 
-    SQInteger _ninstructions;
+    size_t _ninstructions;
     SQInstruction _instructions[1];
 };
-
-#endif //_SQFUNCTION_H_

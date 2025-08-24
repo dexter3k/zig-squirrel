@@ -1,6 +1,29 @@
 const std = @import("std");
 const builtin = @import("builtin");
 
+// inline SQHash _hashstr (const SQChar *s, size_t l)
+// {
+//     SQHash h = (SQHash)l;  /* seed */
+//     size_t step = (l >> 5) + 1;  /* if string is too long, don't hash all its chars */
+//     size_t l1;
+//     for (l1 = l; l1 >= step; l1 -= step)
+//         h = h ^ ((h << 5) + (h >> 2) + ((unsigned short)s[l1 - 1]));
+//     return h;
+// }
+
+export fn hash_string(s: [*]const u8, s_len: usize) usize {
+    const step = (s_len >> 5) + 1;
+
+    var h = s_len;
+    var i = s_len;
+    while (i >= step) {
+        const index = i - 1;
+        h = h ^ ((h << 5) +% (h >> 2) +% s[index]);
+        i -= step;
+    }
+    return h;
+}
+
 export fn hash_strings(a: [*]const u8, a_len: usize, b: [*]const u8, b_len: usize) usize {
     const step = ((a_len + b_len) >> 5) + 1;
 

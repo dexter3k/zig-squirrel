@@ -2,7 +2,10 @@
 
 #include <cstdint>
 
-#include "squtils.h"
+#include "sqvector.hpp"
+#include "sqcompiler.h"
+
+#include "SQFunctionProto.hpp"
 
 class SQFuncState {
     CompilerErrorFunc _errfunc;
